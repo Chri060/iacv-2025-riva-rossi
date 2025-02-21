@@ -1,0 +1,6 @@
+# Core
+numpy
+
+
+# Image processing
+opencv-python

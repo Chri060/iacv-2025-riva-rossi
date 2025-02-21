@@ -4,14 +4,7 @@ import glob
 import os
 import re
 
-# Path where the checkerboard images are stored
-images_path = "./images"
-# Size of the checkerboard (number of inner corners per row and column)
-checkerboard_size = (6, 9)
-# Physical size of a square in the checkerboard (in millimeters, for example)
-square_size = 25
-
-def calibrate_camera():
+def intrinsic(images_path, checkerboard_size = (9, 6), square_size = 25, show_detection = False):
     # Termination criteria for corner sub-pixel refinement
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -26,7 +19,7 @@ def calibrate_camera():
 
     # Check if any images were found
     if not images:
-        print("No images found in the specified directory.")
+        print(f"No images found in the specified directory. Path : {images_path}")
         return None, None
 
     print(f"Found {len(images)} images. Processing...")
@@ -51,7 +44,7 @@ def calibrate_camera():
         # Detect the checkerboard
         ret, corners = cv2.findChessboardCorners(gray, checkerboard_size, flags)
 
-        print(f"Processing: {remove_prefix(input_image)} - Checkerboard detected: {ret}")
+        print(f"Processing: {__remove_prefix(input_image, images_path=images_path)} - Checkerboard detected: {ret}")
 
         if ret:
             # Store object points
@@ -63,8 +56,9 @@ def calibrate_camera():
 
             # Draw detected corners on the image for visualization
             cv2.drawChessboardCorners(img, checkerboard_size, refined_corners, ret)
-            cv2.imshow("Detected Corners", img)
-            cv2.waitKey(500)
+            if show_detection:
+                cv2.imshow("Detected Corners", img)
+                cv2.waitKey(1000)
 
     # Close all OpenCV windows
     cv2.destroyAllWindows()
@@ -73,17 +67,6 @@ def calibrate_camera():
     if len(object_points) > 0:
         img_shape = gray.shape[::-1]  # Image size (width, height)
         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, img_shape, None, None)
-
-        # Output calibration results in a properly aligned format
-        print("Calibration matrix:")
-        print("[")
-        for row in mtx:
-            print(" ".join(f"{val:10.4f}" for val in row))
-        print("]")
-
-        print("\nDistortion coefficients:")
-        print("[\n" + " ".join(f"{val:10.4f}" for val in dist.flatten()) + "\n]")
-
         return mtx, dist
     else:
         print("No valid checkerboard detections. Calibration failed.")
@@ -91,11 +74,7 @@ def calibrate_camera():
 
 
 # Remove prefix for better visualization
-def remove_prefix(text):
-    pattern = images_path + '/'
+def __remove_prefix(text, images_path):
+    pattern = re.escape(images_path + '\\')
     cleaned_text = re.sub(pattern, '', text)
     return cleaned_text
-
-# Run calibration if script is executed directly
-if __name__ == "__main__":
-    calibrate_camera()

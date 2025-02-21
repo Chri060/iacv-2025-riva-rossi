@@ -1,6 +1,7 @@
 import os
 
-folder_path = "./images"
+folder_path = "resources\\calibration\\nothing_2a_checkerboards"
+name = "nothing_2a_checkerboard"
 
 def rename_images():
     # Get a list of image files in the folder (common image extensions)
@@ -10,7 +11,7 @@ def rename_images():
     # Rename images sequentially
     for index, filename in enumerate(images, start=1):
         ext = os.path.splitext(filename)[1]
-        new_name = f"image_{index}{ext}"
+        new_name = f"{name}_{index}{ext}"
         old_path = os.path.join(folder_path, filename)
         new_path = os.path.join(folder_path, new_name)
         os.rename(old_path, new_path)
