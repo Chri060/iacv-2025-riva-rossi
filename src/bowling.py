@@ -1,4 +1,6 @@
-import calibration
+import geometry.calibration as cal
+import geometry.localization as loc
+import geometry.flow as flow
 import utils.display as display
 
 # Path where the checkerboard images are stored
@@ -7,9 +9,9 @@ cam_checkerboard_path = "resources\\calibration\\cam_checkerboards" # Other came
 
 
 if __name__ == "__main__":
-    mtx_n2a, dist_n2a = calibration.intrinsic(images_path=n2a_checkerboard_path)
+    mtx_n2a, dist_n2a = cal.intrinsic(images_path=n2a_checkerboard_path)
     display.mat(mtx_n2a, "N2A Intrinsic calibration matrix :")
     display.mat(dist_n2a, "N2A Distortion matrix :")
-    mtx_cam, dist_cam = calibration.intrinsic(images_path=cam_checkerboard_path)
+    mtx_cam, dist_cam = cal.intrinsic(images_path=cam_checkerboard_path)
 
 
