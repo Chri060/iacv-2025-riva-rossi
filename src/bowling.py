@@ -2,14 +2,31 @@ import geometry.calibration as cal
 import geometry.localization as loc
 import geometry.flow as flow
 import utils.display as display
+from data.camera import Camera
+import data.datamanager as datamanager
 
 # Path where the checkerboard images are stored
 n2a_checkerboard_path = "resources/calibration/nothing_2a_checkerboards" # Nothing Phone 2a
 cam_checkerboard_path = "resources/calibration/cam_checkerboards" # Other camera
 
+CALIBRATION = False
 
 if __name__ == "__main__":
-    mtx_n2a, dist_n2a = cal.intrinsic(images_path=n2a_checkerboard_path)
-    display.mat(mtx_n2a, "N2A Intrinsic calibration matrix :")
-    display.mat(dist_n2a, "N2A Distortion matrix :")
-    mtx_cam, dist_cam = cal.intrinsic(images_path=cam_checkerboard_path)
+    if CALIBRATION : 
+        mtx_n2a, dist_n2a = cal.intrinsic(images_path=n2a_checkerboard_path)
+        display.mat(mtx_n2a, "N2A Intrinsic calibration matrix :")
+        display.mat(dist_n2a, "N2A Distortion matrix :")
+        mtx_cam, dist_cam = cal.intrinsic(images_path=cam_checkerboard_path)
+        display.mat(mtx_n2a, "Cam Intrinsic calibration matrix :")
+        display.mat(dist_n2a, "Cam Distortion matrix :")
+
+        cam1 = Camera(mtx_n2a, None, dist_n2a)
+        cam2 = Camera(mtx_cam, None, dist_cam)
+
+        datamanager.save(cam1, "cam1")
+        datamanager.save(cam2, "cam2")
+    else : 
+        cam1 = datamanager.load("cam1")
+        cam2 = datamanager.load("cam2")
+        display.mat(cam1.intrinsic)
+

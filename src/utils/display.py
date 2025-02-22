@@ -1,4 +1,4 @@
-def mat(matrix, name):
+def mat(matrix, name=None):
     if name:
         print(f"{name} :")
     print("[")
