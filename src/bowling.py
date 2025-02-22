@@ -4,8 +4,8 @@ import geometry.flow as flow
 import utils.display as display
 
 # Path where the checkerboard images are stored
-n2a_checkerboard_path = "resources\\calibration\\nothing_2a_checkerboards" # Nothing Phone 2a
-cam_checkerboard_path = "resources\\calibration\\cam_checkerboards" # Other camera
+n2a_checkerboard_path = "resources/calibration/nothing_2a_checkerboards" # Nothing Phone 2a
+cam_checkerboard_path = "resources/calibration/cam_checkerboards" # Other camera
 
 
 if __name__ == "__main__":
@@ -13,5 +13,3 @@ if __name__ == "__main__":
     display.mat(mtx_n2a, "N2A Intrinsic calibration matrix :")
     display.mat(dist_n2a, "N2A Distortion matrix :")
     mtx_cam, dist_cam = cal.intrinsic(images_path=cam_checkerboard_path)
-
-

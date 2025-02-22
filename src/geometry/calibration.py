@@ -75,6 +75,6 @@ def intrinsic(images_path, checkerboard_size = (9, 6), square_size = 25, show_de
 
 # Remove prefix for better visualization
 def __remove_prefix(text, images_path):
-    pattern = re.escape(images_path + '\\')
+    pattern = re.escape(images_path + '/')
     cleaned_text = re.sub(pattern, '', text)
     return cleaned_text
