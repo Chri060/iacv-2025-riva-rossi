@@ -72,6 +72,28 @@ def intrinsic(images_path, checkerboard_size = (9, 6), square_size = 25, show_de
         print("No valid checkerboard detections. Calibration failed.")
         return None, None
 
+def extrinsic(camera, world_points, image_points):
+    K = camera.intrinsic
+    D = camera.dist
+
+    # Remove the distortion from the points
+    undistorted_points = cv2.undistortPoints(image_points.reshape(-1, 1, 2), K, D, P=K).reshape(-1, 2)
+
+    # Find rotation and translation vectors with PnP without distorsion
+    _, rotation_vector, translation_vector = cv2.solvePnP(world_points, undistorted_points, K, None, flags=cv2.SOLVEPNP_ITERATIVE)
+
+    # Convert rotation vector to rotation matrix
+    rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
+
+    # Compute camera position in world coordinates
+    camera_position = -rotation_matrix.T @ translation_vector
+
+    # Obtaining camera orientation
+    camera_orientation = rotation_matrix.T
+    
+    camera.extrinsic = np.hstack((rotation_matrix, translation_vector))
+
+    return camera_position, camera_orientation
 
 # Remove prefix for better visualization
 def __remove_prefix(text, images_path):

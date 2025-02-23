@@ -1,3 +1,4 @@
+# Shows matrices in a nice way
 def mat(matrix, name=None):
     if name:
         print(f"{name} :")
