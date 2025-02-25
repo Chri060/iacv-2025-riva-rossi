@@ -75,11 +75,11 @@ def intrinsic_distortion_fix(mtx, dist, img_path, show_distortion=False, corners
 
     # Compute optimal new camera matrix
     h, w = img.shape[:2]
-    undist_mtx, _ = cv.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
+    mtx_undist, _ = cv.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
 
     if show_distortion:
         # Undistort the image
-        img_undist = cv.undistort(img, mtx, dist, None, newCameraMatrix=undist_mtx)
+        img_undist = cv.undistort(img, mtx, dist, None, newCameraMatrix=mtx_undist)
 
         # Define original points (ensure shape: Nx1x2)
         points = corners.astype(np.float32).reshape(-1, 1, 2)
@@ -90,13 +90,15 @@ def intrinsic_distortion_fix(mtx, dist, img_path, show_distortion=False, corners
             mtx, 
             dist, 
             None,  
-            P=undist_mtx  # Project using new camera matrix
-        ).reshape(-1, 2).astype(np.int32)
+            P=mtx_undist  # Project using new camera matrix
+        ).reshape(-1, 2)
 
+        
         # Draw lines (original and corrected)
         points = points.reshape(-1,2).astype(np.int32)
+        points_undist_ts = points_undist.astype(np.int32)
         cv.line(img, tuple(points[0]), tuple(points[1]), 255, 1)
-        cv.line(img_undist, tuple(points_undist[0]), tuple(points_undist[1]), 255, 1)
+        cv.line(img_undist, tuple(points_undist_ts[0]), tuple(points_undist_ts[1]), 255, 1)
 
         # Combine images side by side
         combined_img = cv.hconcat([img, img_undist])
@@ -106,7 +108,7 @@ def intrinsic_distortion_fix(mtx, dist, img_path, show_distortion=False, corners
         cv.waitKey(0)  # Wait for a key press to close the window
         cv.destroyAllWindows()  # Close all OpenCV windows
     
-    return undist_mtx
+    return mtx_undist, points_undist
 
 def extrinsic(int, world_points, image_points):
     # Find rotation and translation vectors with PnP without distorsion

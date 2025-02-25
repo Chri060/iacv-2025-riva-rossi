@@ -26,17 +26,17 @@ if __name__ == "__main__":
         display.title_print("Calibration")
         int_n2a, dist_n2a = cal.intrinsic(images_path=n2a_checkerboard_path, checkerboard_size=(9,6), show_detection=False)
         int_cam, dist_cam = cal.intrinsic(images_path=cam_checkerboard_path)
-        int_n2a = cal.intrinsic_distortion_fix(int_n2a, dist_n2a, n2a_lane_path,
+        int_n2a, undist_corners_n2a = cal.intrinsic_distortion_fix(int_n2a, dist_n2a, n2a_lane_path,
                                                show_distortion=True, 
-                                               corners=np.array([coords.N2A_LANE_CORNERS[0], coords.N2A_LANE_CORNERS[1]]))
+                                               corners=coords.N2A_LANE_CORNERS)
         # TODO intrinsic for cam
-        # int_cam = cal.intrinsic_distortion_fix(int_cam, dist_cam, cam_lane_path,
+        # int_cam, undist_corners_cam = cal.intrinsic_distortion_fix(int_cam, dist_cam, cam_lane_path,
         #                                        show_distortion=True, 
         #                                        corners=np.array([coords.N2A_LANE_CORNERS[0], coords.N2A_LANE_CORNERS[1]]))
         
-        ext_n2a, pos_n2a, rot_n2a = cal.extrinsic(int_n2a, coords.WORLD_LANE_CORNERS, coords.N2A_LANE_CORNERS)
+        ext_n2a, pos_n2a, rot_n2a = cal.extrinsic(int_n2a, coords.WORLD_LANE_CORNERS, undist_corners_n2a)
         # TODO extrinsic for cam
-        # ext_cam, pos_cam, rot_cam = cal.extrinsic(int_cam, coords.WORLD_LANE_CORNERS, coords.CAM_LANE_CORNERS)
+        # ext_cam, pos_cam, rot_cam = cal.extrinsic(int_cam, coords.WORLD_LANE_CORNERS, undist_corners_cam)
 
         # Store the results
         n2a_cam = Camera("Nothing 2A", int_n2a, ext_n2a, dist_n2a, pos_n2a, rot_n2a)
