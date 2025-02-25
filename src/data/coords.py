@@ -27,3 +27,8 @@ N2A_LANE_CORNERS = np.array([
     [321, 298],
     [282, 640]
 ], dtype=np.float32)
+
+
+# CAM_LANE_CORNERS = np.array([
+# ..
+# ], dtype=np.float32)

@@ -31,7 +31,6 @@ def bowling_lane(ax, corners):
 # Plots a reference frame in a given 3d axes
 def reference_frame(ax, pos, rot, colors=['r', 'g', 'b'], names=['x', 'y', 'z'], length=1, label=None, lcolor='r'):
     if label:
-        print(*pos)
         ax.scatter(*pos, color=lcolor, s=10*length, label=label)
         ax.legend()
     pos = pos.reshape(1,3)
@@ -41,8 +40,8 @@ def reference_frame(ax, pos, rot, colors=['r', 'g', 'b'], names=['x', 'y', 'z'],
         ax.text(text_pos[0], text_pos[1], text_pos[2], names[i], color=colors[i])
 
 # Plots a camera in a given 3d axes
-def camera(ax, camera_position, camera_orientation, label=None, lcolor='r'):
-    reference_frame(ax, camera_position, camera_orientation, length=3, label=label, lcolor=lcolor)
+def camera(ax, camera, label=None, lcolor='r'):
+    reference_frame(ax, camera.position, camera.rotation, length=3, label=label, lcolor=lcolor)
 
 # Sets the limits of a 3D axes
 def set_limits(ax, min, max):
