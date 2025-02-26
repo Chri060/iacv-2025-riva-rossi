@@ -21,14 +21,6 @@ WORLD_LANE_CORNERS = np.array([
 ], dtype=np.float32)
 
 # The vertices of the bowling lane in the N2A image reference frame
-N2A_LANE_CORNERS = np.array([
-    [20, 625],
-    [283, 299],
-    [321, 298],
-    [282, 640]
-], dtype=np.float32)
+N2A_LANE_CORNERS = np.array([[82.0, 974.0], [478.0, 486.0], [538.0, 486.0], [474.0, 1002.0]], dtype=np.float32)
 
-
-# CAM_LANE_CORNERS = np.array([
-# ..
-# ], dtype=np.float32)
+LUM_LANE_CORNERS = np.array([[1436.0, 676.0], [596.0, 330.0], [686.0, 328.0], [1800.0, 642.0]], dtype=np.float32)

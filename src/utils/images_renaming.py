@@ -1,7 +1,8 @@
 import os
 
-folder_path = "resources/calibration/nothing_2a_checkerboards_2"
-name = "n2a_cal2"
+camera = "lumix"
+folder_path = f"resources/calibration/{camera}_checkerboards"
+name = "lum_cal"
 
 def rename_images():
     # Get a list of image files in the folder (common image extensions)

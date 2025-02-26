@@ -58,7 +58,7 @@ def intrinsic(images_path, checkerboard_size = (9, 6), show_detection = False):
             if show_detection:
                 cv.drawChessboardCorners(img, checkerboard_size, refined_corners, ret)
                 cv.imshow("Detected Corners", img)
-                cv.waitKey(1000)
+                cv.waitKey(2000)
 
     # Proceed with calibration if at least one checkerboard was detected
     if len(object_points) > 0:
@@ -69,7 +69,7 @@ def intrinsic(images_path, checkerboard_size = (9, 6), show_detection = False):
         print("No valid checkerboard detections. Calibration failed.")
         return None, None
 
-def intrinsic_distortion_fix(mtx, dist, img_path, show_distortion=False, corners=None):
+def intrinsic_distortion_fix(mtx, dist, img_path, show_distortion=False, corners=None, scale=0.3):
     # Read image
     img = cv.imread(img_path)
 
@@ -104,6 +104,7 @@ def intrinsic_distortion_fix(mtx, dist, img_path, show_distortion=False, corners
         combined_img = cv.hconcat([img, img_undist])
 
         # Display the combined image
+        combined_img = cv.resize(combined_img, (0,0), fx=scale, fy=scale)
         cv.imshow("Original vs Undistorted", combined_img)
         cv.waitKey(0)  # Wait for a key press to close the window
         cv.destroyAllWindows()  # Close all OpenCV windows
