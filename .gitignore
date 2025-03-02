@@ -494,3 +494,4 @@ pyrightconfig.json
 # End of https://www.toptal.com/developers/gitignore/api/python,opencv,latex
 
 .DS_Store
+.idea
