@@ -4,3 +4,4 @@ numpy
 
 # Image processing
 opencv-python
+opencv-contrib-python

@@ -21,6 +21,7 @@ def track_ball(video_path, output_path):
 
     # Initialize variable to check if the ball has been tracked
     initialized = False
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(1*fps-1))
 
     while True:
         ret, frame = cap.read()
