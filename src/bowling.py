@@ -1,10 +1,4 @@
-import cv2 as cv
-import numpy as np
-from matplotlib import pyplot as plt
-
 import geometry.calibration as cal
-import geometry.localization as loc
-import geometry.flow as flow
 import utils.display as display
 import utils.plot as plot
 from data.camera import Camera
@@ -18,7 +12,7 @@ lum_checkerboard_path = "resources/calibration/lumix_checkerboards" # Other came
 n2a_lane_path = "resources/localization/nothing_2a/lane.png" # Path for a n2a bowling lane sample file
 lum_lane_path = "resources/localization/lumix/lane.png" # Path for a lum bowling lane sample file
 
-CALIBRATION = False
+CALIBRATION = True
 SHOW_LOCALIZATION = True
 
 if __name__ == "__main__":
