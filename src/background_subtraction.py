@@ -146,6 +146,7 @@ def process_video(background_path, video_path, output_path, roi_points,
         if len(indices) != 0:
             pos = np.astype(indices.mean(axis=0), np.int16)
             pos_text = f"{pos[0]}, {pos[1]}"
+            print(f"[{pos[1]}, {pos[0]}],")
             position_detected = True
             missed = 0
         else :
