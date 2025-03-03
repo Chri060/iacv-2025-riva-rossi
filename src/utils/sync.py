@@ -1,4 +1,4 @@
-import cv2
+import cv2 as cv
 import os
 import numpy as np
 import scipy.signal
@@ -28,10 +28,10 @@ def sync_audio(video1_path, video2_path):
 
 def process_video(input_path, output_path, target_fps, target_duration, start_time):
     # Open an output video handler with the correct parameters
-    cap = cv2.VideoCapture(input_path)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    out = cv2.VideoWriter(output_path, fourcc, target_fps, (width, height))
+    cap = cv.VideoCapture(input_path)
+    fourcc = cv.VideoWriter_fourcc(*'mp4v')
+    width, height = int(cap.get(cv.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+    out = cv.VideoWriter(output_path, fourcc, target_fps, (width, height))
 
     # Modify the video to have a fixed length and fps
     frame_time = 1 / target_fps
@@ -40,7 +40,7 @@ def process_video(input_path, output_path, target_fps, target_duration, start_ti
     count = 0
 
     while cap.isOpened() and count < frame_count:
-        cap.set(cv2.CAP_PROP_POS_MSEC, current_time * 1000)  #
+        cap.set(cv.CAP_PROP_POS_MSEC, current_time * 1000)  #
         ret, frame = cap.read()
         if not ret:
             break

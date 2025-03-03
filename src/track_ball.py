@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 
 def track_ball(video_path, output_path):
     # Open the video
@@ -34,7 +33,7 @@ def track_ball(video_path, output_path):
         # Threshold the image to isolate the ball (assuming the ball is brighter)
         _, thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY)
 
-        # Find contours in the thresholded image
+        # Find contours in the threshold image
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # Find the largest contour (which should be the ball)

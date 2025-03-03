@@ -78,13 +78,13 @@ def intrinsic_distortion_fix(mtx, dist, img_path, show_distortion=False, corners
     mtx_undist, _ = cv.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
 
     if show_distortion:
-        # Undistort the image
+        # Undistorted the image
         img_undist = cv.undistort(img, mtx, dist, None, newCameraMatrix=mtx_undist)
 
         # Define original points (ensure shape: Nx1x2)
         points = corners.astype(np.float32).reshape(-1, 1, 2)
 
-        # Undistort points with the new camera matrix
+        # Undistorted points with the new camera matrix
         points_undist = cv.undistortPoints(
             points, 
             mtx, 
