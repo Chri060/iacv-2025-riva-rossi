@@ -1,0 +1,38 @@
+# To be used during development
+savename: default
+global:
+  video_names: ["opt_7.MP4", "opt_7.MP4"]
+  camera_names: ["nothing_2a", "lumix"]
+  paths:
+    originals: "resources/videos/originals"
+  coords:
+    world_lane: [[0, 0, 0], [12, 0, 0], [12, -1.07, 0], [0, -1.07, 0]]
+  visualization: True
+pipeline:
+  - name: intrinsic
+    type: load
+  - name: video_synchronization
+    type: load
+    params: {
+      save_path : "resources/videos/sync"
+    }
+  - name: video_stabilization
+    type: load
+  - name: video_undistortion
+    type: load
+    params: {
+      save_path: "resources/videos/undistorted"
+    }
+  - name: lane_detection
+    type: load
+  - name: extrinsic
+    type: load
+  - name: object_tracker
+    type: execute
+    params: {
+      save_path: "resources/videos/tracking"
+    }
+  - name: 3d_localization
+    type: execute
+    params: {}
+

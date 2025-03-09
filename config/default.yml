@@ -1,0 +1,45 @@
+# Executes the entire standard pipeline
+savename: default
+global:
+  video_names: ["opt_7.MP4", "opt_7.MP4"]
+  camera_names: ["nothing_2a", "lumix"]
+  paths:
+    originals: "resources/videos/originals"
+  coords:
+    world_lane: [[0, 0, 0], [12, 0, 0], [12, -1.07, 0], [0, -1.07, 0]]
+  visualization: True
+pipeline:
+  - name: intrinsic
+    type: execute
+    params: {
+      images_path : "resources/images/calibration",
+      visualization : False
+    }
+  - name: video_synchronization
+    type: execute
+    params: {
+      save_path : "resources/videos/sync"
+    }
+  - name: video_stabilization
+    type: execute
+    params: {}
+  - name: video_undistortion
+    type: execute
+    params: {
+      save_path : "resources/videos/undistorted"
+    }
+  - name: lane_detection
+    type: execute
+    params: {}
+  - name: extrinsic
+    type: execute
+  - name: localization_viz
+    type: execute
+    params: {}
+  - name: object_tracker
+    type: execute
+    params: {}
+  - name: 3d_localization
+    type: execute
+    params: {}
+

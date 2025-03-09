@@ -1,5 +1,6 @@
 # Core
 numpy~=2.0.2
+pyyaml
 
 
 # Image processing
