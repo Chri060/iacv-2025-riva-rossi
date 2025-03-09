@@ -2,6 +2,7 @@ import cv2 as cv
 import pickle
 import os
 
+
 class Environment:
     video_names = []
     camera_names = []
@@ -18,15 +19,15 @@ class Environment:
         import pipeline.visualizers.viz as viz
 
         pipes = {
-            "intrinsic" : cal.Intrinsic_Calibration,
-            "video_synchronization" : vp.Synchronizer,
-            "video_stabilization" : vp.Stabilizer,
-            "video_undistortion" : vp.Undistorcer,
-            "lane_detection" : loc.LaneDetector,
-            "extrinsic" : cal.Extrinsic_Calibration,
-            "object_tracker" : loc.ObjectTracker,
-            "3d_localization" : loc.Triangulator,
-            "localization_viz" : viz.Camera_Localization_Viz,
+            "intrinsic": cal.Intrinsic_Calibration,
+            "video_synchronization": vp.Synchronizer,
+            "video_stabilization": vp.Stabilizer,
+            "video_undistortion": vp.Undistorcer,
+            "lane_detection": loc.LaneDetector,
+            "extrinsic": cal.Extrinsic_Calibration,
+            "object_tracker": loc.ObjectTracker,
+            "3d_localization": loc.Triangulator,
+            "localization_viz": viz.Camera_Localization_Viz,
         }
 
         # Initialize the pipes with the given savename
@@ -35,13 +36,15 @@ class Environment:
 
         # Process each pipe
         for proc_conf in pipeline_configs:
-            proc= pipes[proc_conf['name']]
-            params = proc_conf.get('params', None)
-            proc_type = proc_conf['type']
-            print(f"\n>>>>> {proc.__class__.__name__} | {proc_type} <<<<<\n       params : {params}\n")
-            if proc_type == 'execute':
+            proc = pipes[proc_conf["name"]]
+            params = proc_conf.get("params", None)
+            proc_type = proc_conf["type"]
+            print(
+                f"\n>>>>> {proc.__class__.__name__} | {proc_type} <<<<<\n       params : {params}\n"
+            )
+            if proc_type == "execute":
                 proc.execute(params)
-            elif proc_type == 'load':
+            elif proc_type == "load":
                 proc.load(params)
 
     @staticmethod
@@ -54,7 +57,7 @@ class Environment:
         Environment.env_vars = {}
         Environment.coords = global_parameters.get("coords", {})
         Environment.visualization = global_parameters.get("visualization", False)
-        print(f"Default visualization : ",Environment.visualization)
+        print("Default visualization : ", Environment.visualization)
         Environment.__initialized = True
         # Load the videos
         Environment.__load_views()
@@ -65,14 +68,18 @@ class Environment:
 
     @staticmethod
     def get(name):
-        if not Environment.__initialized: raise Exception("Environment has not been initialized")
+        if not Environment.__initialized:
+            raise Exception("Environment has not been initialized")
         if name in Environment.env_vars:
             return Environment.env_vars.get(name)
-        raise Exception(f"Trying to access \"{name}\" in Environment while it does not exists")
+        raise Exception(
+            f'Trying to access "{name}" in Environment while it does not exists'
+        )
 
     @staticmethod
     def set(name, obj, overwrite=False):
-        if not Environment.__initialized: raise Exception("Environment has not been initialized")
+        if not Environment.__initialized:
+            raise Exception("Environment has not been initialized")
         if not overwrite and name in Environment.env_vars:
             raise Exception("Trying to overwrite without permission")
         Environment.env_vars[name] = obj
@@ -81,7 +88,7 @@ class Environment:
     def __load_views():
         video_names = Environment.video_names
         camera_names = Environment.camera_names
-        originals_path = Environment.paths['originals']
+        originals_path = Environment.paths["originals"]
         for i, camera_name in enumerate(camera_names):
             full_path = f"{originals_path}/{camera_name}/{video_names[i]}"
             video = Video(full_path)
@@ -93,33 +100,39 @@ class Environment:
 
 
 class DataManager:
-    save_path = 'resources/pickle/'
+    save_path = "resources/pickle/"
+
     @staticmethod
     def save(obj, savename):
-        with open(f'{DataManager.save_path}{savename}.pkl', 'wb') as out:
+        with open(f"{DataManager.save_path}{savename}.pkl", "wb") as out:
             pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
-
 
     @staticmethod
     def load(name):
         try:
-            with open(f'{DataManager.save_path}{name}.pkl', 'rb') as inp:
+            with open(f"{DataManager.save_path}{name}.pkl", "rb") as inp:
                 obj = pickle.load(inp)
                 return obj
         except FileNotFoundError:
             raise Exception(f"Failed to find save : {name}")
 
-
     @staticmethod
     def delete(name):
         print(f"Deleting {name}")
-        os.remove(f'{DataManager.save_path}{name}.pkl')
+        os.remove(f"{DataManager.save_path}{name}.pkl")
         print(f"> {name} deleted")
 
 
-
 class Camera:
-    def __init__(self, name, intrinsic=None, distortion=None, extrinsic=None, position=None, rotation=None):
+    def __init__(
+        self,
+        name,
+        intrinsic=None,
+        distortion=None,
+        extrinsic=None,
+        position=None,
+        rotation=None,
+    ):
         self.name = name
         self.intrinsic = intrinsic
         self.distortion = distortion
@@ -133,8 +146,8 @@ class Camera:
 
 class Video:
     def __init__(self, path):
-       self.capture = cv.VideoCapture(path) #opencv video capture
-       self.path = path #textual path to the saved video
+        self.capture = cv.VideoCapture(path)  # opencv video capture
+        self.path = path  # textual path to the saved video
 
     def get_video_properties(self):
         fps = self.capture.get(cv.CAP_PROP_FPS)
@@ -144,14 +157,17 @@ class Video:
         height = int(self.capture.get(cv.CAP_PROP_FRAME_HEIGHT))
         return fps, duration, (width, height)
 
+
 class Lane:
     def __init__(self, corners=None):
         self.corners = corners
+
 
 class Trajectory:
     def __init__(self, image_points=None, world_points=None):
         self.image_points = image_points
         self.world_points = world_points
+
 
 class View:
     def __init__(self, camera, video, lane, trajectory):

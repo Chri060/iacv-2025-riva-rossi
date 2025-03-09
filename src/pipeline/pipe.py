@@ -1,7 +1,6 @@
-from pipeline.environment import DataManager
-class Pipe():
-    def __init__(self, save_name = None):
-        if save_name == None:
+class Pipe:
+    def __init__(self, save_name=None):
+        if save_name is None:
             save_name = "save"
         self.save_name = f"{self.__class__.__name__}_{save_name}"
 
