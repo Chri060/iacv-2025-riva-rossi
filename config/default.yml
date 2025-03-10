@@ -38,7 +38,9 @@ pipeline:
     params: {}
   - name: object_tracker
     type: execute
-    params: {}
+    params: {
+      save_path: "resources/videos/localization"
+    }
   - name: 3d_localization
     type: execute
     params: {}

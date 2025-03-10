@@ -68,9 +68,7 @@ class LaneDetector(Pipe):
 class ObjectTracker(Pipe):
     def execute(self, params):
         try:
-            # TODO to fix (it is None)
-            # save_path = params.get("save_path")
-            save_path = "resources/localization"
+            save_path = params.get("save_path")
         except Exception as _:
             raise Exception("Missing required parameter : save_path")
 
@@ -82,9 +80,7 @@ class ObjectTracker(Pipe):
                 video,
                 output_path,
                 roi,
-                threshold=20,
                 kernel_size=5,
-                tracking_tolerance=60,
                 playback_scaling=0.6,
             )
 
@@ -96,13 +92,10 @@ class ObjectTracker(Pipe):
         video,
         output_path,
         roi_points,
-        threshold=15,
         kernel_size=10,
-        tracking_tolerance=100,
         color_range=[(0, 0, 0), (255, 255, 255)],
         start_second=0,
         end_second=None,
-        stabilization=False,
         playback_scaling=0.5,
     ):
         interactive = False
@@ -127,16 +120,18 @@ class ObjectTracker(Pipe):
 
         # Get the polygonal bounding box and apply it to the background image
         poly_mask = self.__create_polygonal_mask(roi_points, 20, background.shape)
-        background = cv.bitwise_and(background, poly_mask)
 
         # Initialize video playback
         frame_counter = start_second * fps
         video.set(cv.CAP_PROP_POS_FRAMES, int(start_second * fps - 1))
-        pos = None
 
         image_points = []
 
+        # Initialize the background subtractor
         bg_subtractor = cv.createBackgroundSubtractorMOG2(history=500, varThreshold=16, detectShadows=True)
+
+        # Initialize the last position
+        last_position = None
 
         # Process each frame
         while True:
@@ -156,7 +151,7 @@ class ObjectTracker(Pipe):
             # Apply background subtraction to the frame
             fg_mask = bg_subtractor.apply(frame)
 
-            # Optional: If you want to separate shadow regions, you can handle them separately
+            # Handle the shadows
             fg_mask_no_shadows = fg_mask.copy()
             fg_mask_no_shadows[fg_mask == 127] = 0  # Removing shadows (127 indicates shadows in MOG2)
 
@@ -167,7 +162,7 @@ class ObjectTracker(Pipe):
             # Apply the cleaned mask to the frame
             frame_morph = cv.bitwise_and(frame, frame, mask=morph_mask)
 
-            # Convert to HSV and apply color masking if needed (optional)
+            # Convert to HSV and apply color masking if needed
             hsv = cv.cvtColor(frame_morph, cv.COLOR_BGR2HSV)
             color_mask = cv.inRange(hsv, color_range[0], color_range[1])
 
@@ -179,32 +174,39 @@ class ObjectTracker(Pipe):
             result = cv.bitwise_and(frame_morph, color_mask)
 
             # Obtain the gray image
+            # Preprocessing: apply a Gaussian blur
             gray = cv.cvtColor(result, cv.COLOR_BGR2GRAY)
-            gray = cv.GaussianBlur(gray, (5, 5), 1.5)  # Apply Gaussian Blur
+            gray = cv.GaussianBlur(gray, (9, 9), 2)  # Stronger blur to reduce noise
 
-            # Apply hough circles
+            # Apply Hough Circles with adjusted parameters
             circles = cv.HoughCircles(
                 gray,
                 cv.HOUGH_GRADIENT,
-                dp=1,  # Inverse ratio of resolution
-                minDist=20,  # Minimum distance between circles
-                param1=40,  # Canny edge threshold (high)
-                param2=25,  # Circle detection threshold (low)
-                minRadius=5,
-                maxRadius=50
+                dp=1,               # Inverse ratio of resolution
+                minDist=100,        # Minimum distance between circles
+                param1=50,          # Canny edge threshold
+                param2=15,          # Circle detection threshold
+                minRadius=2,        # Minimum radius
+                maxRadius=70        # Maximum radius
             )
 
-            image_points.append(pos)
-
+            # Check if circles are detected
             if circles is not None:
-                circles = np.uint16(np.around(circles))  # Round values
+                # circles = np.uint16(np.around(circles))  # Round values to integers
                 for circle in circles[0, :]:
                     x, y, r = circle
+                    last_position = (x, y)  # Update the last known position
                     image_points.append((x, y))  # Store detected points
 
                     # Draw the circle and center point
                     cv.circle(result, (x, y), r, (0, 255, 255), 2)
                     cv.circle(result, (x, y), 3, (0, 0, 255), -1)
+            else:
+                # If no circles are detected, just keep the last known position
+                if last_position is not None:
+                    x, y = last_position
+                    image_points.append((x, y))  # Keep the same position
+                    cv.circle(result, (x, y), 3, (255, 0, 0), -1)
 
             to_plot.append(result)
 
