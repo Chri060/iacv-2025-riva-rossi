@@ -19,7 +19,10 @@ class Synchronizer(Pipe):
             save_path = params["save_path"]
         except Exception as _:
             raise Exception("Missing required parameter : save_path")
-        visualization = params.get("visualization", Environment.visualization)
+        try: 
+            visualization = params.get("visualization", Environment.visualization)
+        except AttributeError as _:
+            visualization = Environment.visualization
 
         cam1_name = Environment.camera_names[0]
         cam2_name = Environment.camera_names[1]
@@ -89,7 +92,10 @@ class Synchronizer(Pipe):
             save_path = params["save_path"]
         except Exception as _:
             raise Exception("Missing required parameter : save_path")
-        visualization = params.get("visualization", Environment.visualization)
+        try: 
+            visualization = params.get("visualization", Environment.visualization)
+        except AttributeError as _:
+            visualization = Environment.visualization
 
         view = Environment.get_views()
         view1, view2 = view[0], view[1]
@@ -220,7 +226,10 @@ class Undistorcer(Pipe):
             save_path = params["save_path"]
         except Exception as _:
             raise Exception("Missing required parameter : save_path")
-        visualization = params.get("visualization", Environment.visualization)
+        try: 
+            visualization = params.get("visualization", Environment.visualization)
+        except AttributeError as _:
+            visualization = Environment.visualization
 
         for i, view in enumerate(Environment.get_views()):
             cam = view.camera
@@ -257,11 +266,11 @@ class Undistorcer(Pipe):
     def load(self, params):
         try:
             save_path = params["save_path"]
-        except:
+        except Exception as _:
             raise Exception("Missing required parameter : save_path")
         try:
             visualization = params["visualization"]
-        except:
+        except Exception as _:
             visualization = Environment.visualization
 
         for i, camera_name in enumerate(Environment.camera_names):

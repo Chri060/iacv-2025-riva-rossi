@@ -13,7 +13,10 @@ class Intrinsic_Calibration(Pipe):
             images_path = params["images_path"]
         except Exception as _:
             raise Exception("Missing required parameter : images_path")
-        visualization = params.get("visualization", Environment.visualization)
+        try: 
+            visualization = params.get("visualization", Environment.visualization)
+        except AttributeError as _:
+            visualization = Environment.visualization
         checkerboard_sizes = params.get("checkerboard_sizes", [[9, 6], [9, 6]])
         return images_path, visualization, checkerboard_sizes
 

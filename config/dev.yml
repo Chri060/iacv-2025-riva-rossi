@@ -7,7 +7,7 @@ global:
     originals: "resources/videos/originals"
   coords:
     world_lane: [[0, 0, 0], [12, 0, 0], [12, -1.07, 0], [0, -1.07, 0]]
-  visualization: True
+  visualization: False
 pipeline:
   - name: intrinsic
     type: load
@@ -27,12 +27,14 @@ pipeline:
     type: load
   - name: extrinsic
     type: load
-  - name: object_tracker
+  - name: ball_tracker
     type: execute
     params: {
-      save_path: "resources/videos/tracking"
+      save_path: "resources/videos/tracking",
+      visualization: True
     }
-  - name: 3d_localization
+  - name: ball_localization
     type: execute
-    params: {}
+  - name: ball_localization_viz
+    type: execute
 

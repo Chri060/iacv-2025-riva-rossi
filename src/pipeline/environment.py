@@ -1,6 +1,8 @@
 import cv2 as cv
 import pickle
 import os
+import random
+import numpy as np
 
 
 class Environment:
@@ -23,11 +25,12 @@ class Environment:
             "video_synchronization": vp.Synchronizer,
             "video_stabilization": vp.Stabilizer,
             "video_undistortion": vp.Undistorcer,
-            "lane_detection": loc.LaneDetector,
+            "lane_detection": loc.Lane_Detector,
             "extrinsic": cal.Extrinsic_Calibration,
-            "object_tracker": loc.ObjectTracker,
-            "3d_localization": loc.Triangulator,
+            "ball_tracker": loc.Ball_Tracker,
+            "ball_localization": loc.Ball_Localization,
             "localization_viz": viz.Camera_Localization_Viz,
+            "ball_localization_viz": viz.Ball_Localization_Viz
         }
 
         # Initialize the pipes with the given savename
@@ -94,7 +97,7 @@ class Environment:
             video = Video(full_path)
             camera = Camera(camera_name)
             lane = Lane()
-            trajectory = Trajectory()
+            trajectory = None
             view = View(camera, video, lane, trajectory)
             Environment.set(camera_name, view)
 
@@ -114,7 +117,7 @@ class DataManager:
                 obj = pickle.load(inp)
                 return obj
         except FileNotFoundError:
-            raise Exception(f"Failed to find save : {name}")
+            raise Exception(f"Failed to find load : {name}")
 
     @staticmethod
     def delete(name):
@@ -163,10 +166,39 @@ class Lane:
         self.corners = corners
 
 
-class Trajectory:
-    def __init__(self, image_points=None, world_points=None):
-        self.image_points = image_points
-        self.world_points = world_points
+class Ball_Trajectory_2D:
+    def __init__(self, n_frames, fps=None, image_points=None, radiuses=None):
+        self.n_frames = n_frames
+        self.fps = fps
+        if image_points is not None: 
+            assert len(image_points) == n_frames and len(radiuses) == n_frames
+        self.image_points = image_points or [None] * n_frames # empty list if no image_points are provided
+        self.radiuses = radiuses or [None] * n_frames
+        self.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+    
+    def set_by_frame(self, coord, r, curr_frame):
+        if curr_frame > self.n_frames : 
+            raise Exception("Trying to access an out of bount frame")
+        self.image_points[curr_frame] = coord
+        self.radiuses[curr_frame] = r
+
+    def get_by_frame(self, curr_frame):
+        if curr_frame > self.n_frames : 
+            raise Exception("Trying to access an out of bount frame")
+        return self.image_points[curr_frame], self.radiuses[curr_frame]
+    
+    def plot_onto(self, image):
+        to_plot = []
+        for curr_frame, curr_pos in enumerate(self.image_points):
+            curr_rad = self.radiuses[curr_frame]
+            if curr_pos is not None:
+                curr_pos = (int(curr_pos[0]), int(curr_pos[1]))
+                curr_rad = int(curr_rad)
+                to_plot.append(curr_pos)
+                cv.circle(image, curr_pos, curr_rad, self.color, 1)
+        to_plot = np.array(to_plot, dtype=np.int32).reshape((-1, 1, 2))
+        cv.polylines(image, to_plot, isClosed=False, color=self.color, thickness=2)
+            
 
 
 class View:

@@ -1,3 +1,4 @@
+from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -68,6 +69,11 @@ def camera(ax, camera, lcolor=None):
         ax, camera.position, camera.rotation, length=3, label=camera.name, lcolor=lcolor
     )
 
+def trajectory(ax, trajectory):
+    x = trajectory[:,0]
+    y = trajectory[:,1]
+    z = trajectory[:,2]
+    ax.plot3D(x, y, z, 'green')
 
 # Sets the limits of a 3D axes
 def set_limits(ax, min, max):

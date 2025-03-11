@@ -32,3 +32,24 @@ class Camera_Localization_Viz(Pipe):
 
         # Show the plot
         plot_utils.show()
+
+class Ball_Localization_Viz(Pipe):
+    def execute(self, params):
+        fig, ax = plot_utils.get_3d_plot("Ball Localization : 3D Visualization")
+
+        lane_coords = np.array(Environment.coords["world_lane"])
+        min_offset = 3
+        max_offset = 3
+        min = np.min(lane_coords[:, :]) - min_offset
+        max = np.max(lane_coords[:, :]) + max_offset
+        plot_utils.set_limits(ax, min, max)
+        plot_utils.view_angle(ax, elev=45, azim=15)
+
+        plot_utils.bowling_lane(ax, lane_coords)
+
+        traj = Environment.get("3D_trajectory")
+
+        plot_utils.trajectory(ax, traj)
+        
+        # Show the plot
+        plot_utils.show()

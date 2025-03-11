@@ -32,10 +32,12 @@ pipeline:
     params: {}
   - name: localization_viz
     type: execute
-  - name: object_tracker 
+  - name: ball_localization
     type: load
     params: {}
-  - name: 3d_localization
+  - name: ball_localization
     type: load
     params: {}
+  - name: ball_localization_viz
+    type: execute
 

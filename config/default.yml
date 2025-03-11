@@ -36,12 +36,14 @@ pipeline:
   - name: localization_viz
     type: execute
     params: {}
-  - name: object_tracker
+  - name: ball_tracker
     type: execute
     params: {
-      save_path: "resources/videos/localization"
+      save_path: "resources/videos/tracking"
     }
-  - name: 3d_localization
+  - name: ball_localization
     type: execute
     params: {}
+  - name: ball_localization_viz
+    type: execute
 
