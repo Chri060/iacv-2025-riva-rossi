@@ -13,7 +13,6 @@ pipeline:
     type: execute
     params: {
       images_path : "resources/images/calibration",
-      visualization : False
     }
   - name: video_synchronization
     type: execute
@@ -22,7 +21,6 @@ pipeline:
     }
   - name: video_stabilization
     type: execute
-    params: {}
   - name: video_undistortion
     type: execute
     params: {
@@ -30,12 +28,8 @@ pipeline:
     }
   - name: lane_detection
     type: execute
-    params: {}
   - name: extrinsic
     type: execute
-  - name: localization_viz
-    type: execute
-    params: {}
   - name: ball_tracker
     type: execute
     params: {
@@ -43,7 +37,3 @@ pipeline:
     }
   - name: ball_localization
     type: execute
-    params: {}
-  - name: ball_localization_viz
-    type: execute
-

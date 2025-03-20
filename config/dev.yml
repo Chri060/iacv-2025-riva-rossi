@@ -35,6 +35,7 @@ pipeline:
     }
   - name: ball_localization
     type: execute
-  - name: ball_localization_viz
-    type: execute
+    params: {
+      visualization: True
+    }
 

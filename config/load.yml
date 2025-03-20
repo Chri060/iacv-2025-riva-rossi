@@ -26,18 +26,10 @@ pipeline:
     }
   - name: lane_detection
     type: load
-    params: {}
   - name: extrinsic
     type: load
-    params: {}
-  - name: localization_viz
-    type: execute
+  - name: ball_tracker
+    type: load
   - name: ball_localization
     type: load
-    params: {}
-  - name: ball_localization
-    type: load
-    params: {}
-  - name: ball_localization_viz
-    type: execute
 

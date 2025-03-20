@@ -5,6 +5,7 @@ import random
 import numpy as np
 
 
+
 class Environment:
     video_names = []
     camera_names = []
@@ -15,11 +16,9 @@ class Environment:
 
     @staticmethod
     def start_pipeline(pipeline_configs):
-        import pipeline.processors.calibration as cal
-        import pipeline.processors.video_processing as vp
-        import pipeline.processors.localization as loc
-        import pipeline.visualizers.viz as viz
-
+        import pipeline.pipes.calibration as cal
+        import pipeline.pipes.video_processing as vp
+        import pipeline.pipes.localization as loc
         pipes = {
             "intrinsic": cal.Intrinsic_Calibration,
             "video_synchronization": vp.Synchronizer,
@@ -29,8 +28,6 @@ class Environment:
             "extrinsic": cal.Extrinsic_Calibration,
             "ball_tracker": loc.Ball_Tracker,
             "ball_localization": loc.Ball_Localization,
-            "localization_viz": viz.Camera_Localization_Viz,
-            "ball_localization_viz": viz.Ball_Localization_Viz
         }
 
         # Initialize the pipes with the given savename
@@ -38,17 +35,19 @@ class Environment:
             pipes.update({key: pipes.get(key)(Environment.savename)})
 
         # Process each pipe
-        for proc_conf in pipeline_configs:
-            proc = pipes[proc_conf["name"]]
-            params = proc_conf.get("params", None)
-            proc_type = proc_conf["type"]
+        for pipe_conf in pipeline_configs:
+            pipe = pipes[pipe_conf["name"]]
+            params = pipe_conf.get("params", None)
+            proc_type = pipe_conf["type"]
             print(
-                f"\n>>>>> {proc.__class__.__name__} | {proc_type} <<<<<\n       params : {params}\n"
+                f"\n>>>>> {pipe.__class__.__name__} | {proc_type} <<<<<\n       params : {params}\n"
             )
             if proc_type == "execute":
-                proc.execute(params)
+                pipe.execute(params)
             elif proc_type == "load":
-                proc.load(params)
+                pipe.load(params)
+        
+        cv.destroyAllWindows()
 
     @staticmethod
     def initialize_globals(savename, global_parameters):
@@ -167,9 +166,11 @@ class Lane:
 
 
 class Ball_Trajectory_2D:
-    def __init__(self, n_frames, fps=None, image_points=None, radiuses=None):
+    def __init__(self, n_frames, fps=None, image_points=None, radiuses=None, start=None, end=None):
         self.n_frames = n_frames
         self.fps = fps
+        self.start = start
+        self.end = end
         if image_points is not None: 
             assert len(image_points) == n_frames and len(radiuses) == n_frames
         self.image_points = image_points or [None] * n_frames # empty list if no image_points are provided
@@ -181,11 +182,23 @@ class Ball_Trajectory_2D:
             raise Exception("Trying to access an out of bount frame")
         self.image_points[curr_frame] = coord
         self.radiuses[curr_frame] = r
+        if self.start is None:
+            self.start = curr_frame
+            self.end = curr_frame
+        elif curr_frame < self.start:
+            self.start = curr_frame
+        elif curr_frame > self.end:
+            self.end = curr_frame
 
     def get_by_frame(self, curr_frame):
         if curr_frame > self.n_frames : 
             raise Exception("Trying to access an out of bount frame")
         return self.image_points[curr_frame], self.radiuses[curr_frame]
+
+    def get_coords(self, start=None, end=None):
+        start = start or self.start
+        end = end or self.end
+        return np.array(self.image_points[start:end]).reshape(-1,3)
     
     def plot_onto(self, image):
         to_plot = []
@@ -197,7 +210,43 @@ class Ball_Trajectory_2D:
                 to_plot.append(curr_pos)
                 cv.circle(image, curr_pos, curr_rad, self.color, 1)
         to_plot = np.array(to_plot, dtype=np.int32).reshape((-1, 1, 2))
-        cv.polylines(image, to_plot, isClosed=False, color=self.color, thickness=2)
+        cv.polylines(image, to_plot, isClosed=False, color=self.color, thickness=100)
+        
+class Ball_Trajectory_3D:
+    def __init__(self, n_frames, fps=None, coords=None, radius=None, start=None, end=None):
+        self.n_frames = n_frames
+        self.start = start
+        self.end = end
+        self.fps = fps
+        if coords is not None: 
+            assert len(coords) == n_frames
+        self.coords = coords or [None] * n_frames # empty list if no image_points are provided
+        self.radius = radius
+        self.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+    
+    def set_by_frame(self, coord, curr_frame):
+        if curr_frame > self.n_frames : 
+            raise Exception("Trying to access an out of bount frame")
+        self.coords[curr_frame] = coord
+        if self.start is None:
+            self.start = curr_frame
+            self.end = curr_frame
+        elif curr_frame < self.start:
+            self.start = curr_frame
+        elif curr_frame > self.end:
+            self.end = curr_frame
+
+    def get_by_frame(self, curr_frame):
+        if curr_frame > self.n_frames : 
+            raise Exception("Trying to access an out of bount frame")
+        return self.coords[curr_frame]
+    
+    def get_coords(self, start=None, end=None):
+        start = start or self.start
+        end = end or self.end
+        return np.array(self.coords[start:end]).reshape(-1,3)
+
+
             
 
 
