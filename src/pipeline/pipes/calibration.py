@@ -1,32 +1,32 @@
-import cv2 as cv
-import numpy as np
 import glob
 import os
-from pipeline.pipe import Pipe
-from pipeline.environment import Environment
-from pipeline.environment import DataManager
-import pipeline.plot_utils as plot_utils
+import random
 
+import cv2 as cv
+import numpy as np
 import plotly.graph_objects as go
+from cv2.typing import MatLike
 from dash import dcc, html
 
-import random
+import pipeline.plot_utils as plot_utils
+from pipeline.environment import DataManager, Environment
+from pipeline.pipe import Pipe
 
 
 class Intrinsic_Calibration(Pipe):
-    def __process_params(self, params):
+    def __process_params(self, params: dict):
         try:
             images_path = params["images_path"]
         except Exception as _:
             raise Exception("Missing required parameter : images_path")
-        try: 
+        try:
             visualization = params.get("visualization", Environment.visualization)
         except AttributeError as _:
             visualization = Environment.visualization
         checkerboard_sizes = params.get("checkerboard_sizes", [[9, 6], [9, 6]])
         return images_path, visualization, checkerboard_sizes
 
-    def execute(self, params):
+    def execute(self, params: dict):
         images_path, visualization, checkerboard_sizes = self.__process_params(params)
 
         calibration_results = []
@@ -56,8 +56,10 @@ class Intrinsic_Calibration(Pipe):
                     if img is None:
                         print(f"Error reading image: {input_image}")
                         continue
-                
-                    refined_corners = self.__find_checkerboard(img, checkerboard_size, criteria, visualization)
+
+                    refined_corners = self.__find_checkerboard(
+                        img, checkerboard_size, criteria, visualization
+                    )
 
                     if refined_corners is not None:
                         object_points.append(world_points)
@@ -65,39 +67,45 @@ class Intrinsic_Calibration(Pipe):
 
                         img_shape = img.shape[:2]
 
-            if not images:
-                print("No images found in the specified directory. Switching to video calibration")
-                videos = glob.glob(os.path.join(images_path, camera_name, "*.mp4"))
-                if not videos:
-                    print(f"No images nor videos found for {images_path}")
-                    return None, None
+            videos = glob.glob(os.path.join(images_path, camera_name, "*.mp4"))
+            if videos :
                 for video in videos:
                     capture = cv.VideoCapture(video)
-                    total_frames = int(capture.get(cv.CAP_PROP_FRAME_COUNT))  # Get total number of frames
-                    
-                    if total_frames < 60:
-                        print(f"Warning: {video} has less than 20 frames.")
+                    total_frames = int(
+                        capture.get(cv.CAP_PROP_FRAME_COUNT)
+                    )  # Get total number of frames
 
-                    frame_indices = sorted(random.sample(range(total_frames), min(60, total_frames)))  # Select 40 unique random frames
+                    if total_frames < 60:
+                        print(f"Warning: {video} has less than 60 frames.")
+
+                    frame_indices = sorted(
+                        random.sample(range(total_frames), min(60, total_frames))
+                    )  # Select 60 unique random frames
 
                     for idx in frame_indices:
-                        capture.set(cv.CAP_PROP_POS_FRAMES, idx)  # Jump to the selected frame
+                        capture.set(
+                            cv.CAP_PROP_POS_FRAMES, idx
+                        )  # Jump to the selected frame
                         ret, frame = capture.read()
 
                         if not ret:
                             print(f"Unable to read frame {idx} from {video}")
                             continue
 
-                        refined_corners = self.__find_checkerboard(frame, checkerboard_size, criteria, visualization)
+                        refined_corners = self.__find_checkerboard(
+                            frame, checkerboard_size, criteria, visualization
+                        )
 
                         if refined_corners is not None:
                             object_points.append(world_points)
                             image_points.append(refined_corners)
-                            img_shape = frame.shape[:2]  # Ensure img_shape is updated correctly
+                            img_shape = frame.shape[
+                                :2
+                            ]  # Ensure img_shape is updated correctly
 
                     capture.release()
 
-            print(f"Checkerboard matches : {len(image_points)}")
+            print(f"Checkerboard matched : {len(image_points)}")
 
             # Proceed with calibration if at least one checkerboard was detected
             if len(object_points) > 0:
@@ -116,8 +124,13 @@ class Intrinsic_Calibration(Pipe):
         # Save the calibration_results at the end of the calibration process for every view
         DataManager.save(calibration_results, self.save_name)
 
-    def __find_checkerboard(self, img, checkerboard_size, criteria, visualization):
-
+    def __find_checkerboard(
+        self,
+        img: MatLike,
+        checkerboard_size: tuple[int, int],
+        criteria: int,
+        visualization: bool,
+    ):
         # Convert image to grayscale
         gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
@@ -143,32 +156,28 @@ class Intrinsic_Calibration(Pipe):
             )
             # Draw detected corners on the image for visualization
             if visualization:
-                cv.drawChessboardCorners(
-                    img, checkerboard_size, refined_corners, ret
-                )
-                to_plot = cv.resize(img, dsize=(0,0), fx=0.5, fy=0.5)
-                cv.imshow("Visualization", to_plot)
+                cv.drawChessboardCorners(img, checkerboard_size, refined_corners, ret)
+                to_plot = cv.resize(img, dsize=(0, 0), fx=0.5, fy=0.5)
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, to_plot)
                 cv.waitKey(1)
-            
+
             return refined_corners
         return None
-            
-        
 
-    def load(self, params):
+    def load(self, params: dict):
         cal_results = DataManager.load(self.save_name)
         for res in cal_results:
             view = Environment.get(res["camera_name"])
             view.camera.intrinsic = res["intrinsic"]
             view.camera.distortion = res["distortion"]
-    
+
     # No plotly visualization for intrinsic calibration
-    def plotly_page(self, params):
+    def plotly_page(self, params: dict):
         return None
 
 
 class Extrinsic_Calibration(Pipe):
-    def execute(self, params):
+    def execute(self, params: dict):
         try:
             visualization = params.get("visualization", Environment.visualization)
         except AttributeError as _:
@@ -178,7 +187,7 @@ class Extrinsic_Calibration(Pipe):
 
         ext_calibration_results = {}
         for view in Environment.get_views():
-            image_points = np.array(view.lane.corners)
+            image_points = view.lane.corners
             intrinsic = np.array(view.camera.intrinsic)
             # Find rotation and translation vectors with PnP without distorsion
             _, rotation_vector, translation_vector = cv.solvePnP(
@@ -209,13 +218,13 @@ class Extrinsic_Calibration(Pipe):
                     }
                 }
             )
-        
-        if visualization : 
+
+        if visualization:
             self.visualize()
 
         DataManager.save(ext_calibration_results, self.save_name)
 
-    def load(self, params):
+    def load(self, params: dict):
         try:
             visualization = params.get("visualization", Environment.visualization)
         except AttributeError as _:
@@ -229,22 +238,12 @@ class Extrinsic_Calibration(Pipe):
             view.camera.position = res["position"]
             view.camera.rotation = res["rotation"]
 
-        if visualization: 
+        if visualization:
             self.visualize()
 
     def visualize(self):
-        fig, ax = plot_utils.get_3d_plot("Camera placement : 3D Visualization")
-
-        lane_coords = np.array(Environment.coords["world_lane"])
-        min_offset = 3
-        max_offset = 3
-        min = np.min(lane_coords[:, :]) - min_offset
-        max = np.max(lane_coords[:, :]) + max_offset
-        plot_utils.set_limits(ax, min, max)
-        plot_utils.view_angle(ax, elev=45, azim=15)
-
-        plot_utils.bowling_lane(ax, lane_coords)
-
+        ax = plot_utils.get_3d_plot("Camera placement : 3D Visualization")
+        plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
         plot_utils.reference_frame(
             ax,
             [0, 0, 0],
@@ -252,15 +251,11 @@ class Extrinsic_Calibration(Pipe):
             label="World reference frame",
             lcolor="cyan",
         )
-
-        for name in Environment.camera_names:
-            view = Environment.get(name)
+        for view in Environment.get_views():
             plot_utils.camera(ax, view.camera)
-
-        # Show the plot
         plot_utils.show()
-    
-    def plotly_page(self, params):
+
+    def plotly_page(self, params: dict):
         ext_calibration_results = DataManager.load(self.save_name)
 
         views = Environment.get_views()
@@ -269,51 +264,71 @@ class Extrinsic_Calibration(Pipe):
             view.camera.extrinsic = res["extrinsic"]
             view.camera.position = res["position"]
             view.camera.rotation = res["rotation"]
-        
+
         lane_pos = np.array(Environment.coords["world_lane"])
-        x = lane_pos[:,0]
-        y = lane_pos[:,1]
-        z = lane_pos[:,2]
+        x = lane_pos[:, 0]
+        y = lane_pos[:, 1]
+        z = lane_pos[:, 2]
 
         # camera centers
         pos1 = views[0].camera.position
         pos2 = views[1].camera.position
         # camera orientation (only the Z camera axis)
-        rot1 = views[0].camera.rotation[:,2] 
-        rot2 = views[1].camera.rotation[:,2] 
-        
-        lane = go.Figure(data=[
-            go.Mesh3d(x=x, y=y, z=z, color='lightblue', opacity=0.8, name="Bowling Lane"),  # lane
-            go.Cone(x=pos1[0], y=pos1[1], z=pos1[2], 
-                u=[rot1[0]], v=[rot1[1]], w=[rot1[2]], 
-                sizemode="absolute", sizeref=1, showscale=False, name=views[0].camera.name,  # camera 1 direction
-                colorscale=[[0, "red"], [1, "red"]],  # Red color
-                cmin=0, cmax=1),  # Trick to force a single color
-            go.Cone(x=pos2[0], y=pos2[1], z=pos2[2], 
-                u=[rot2[0]], v=[rot2[1]], w=[rot2[2]], 
-                sizemode="absolute", sizeref=1, showscale=False, name=views[1].camera.name,  # camera 2 direction
-                colorscale=[[0, "blue"], [1, "blue"]],  # Red color
-                cmin=0, cmax=1),  # Trick to force a single color
-            go.Scatter3d(x=x[1:3], y=y[1:3], z=z[1:3], mode="lines", name="Pit", line=dict(width=5, color='red')) # end of the bowling lane
+        rot1 = views[0].camera.rotation[:, 2]
+        rot2 = views[1].camera.rotation[:, 2]
+
+        lane = go.Figure(
+            data=[
+                go.Mesh3d(
+                    x=x, y=y, z=z, color="lightblue", opacity=0.8, name="Bowling Lane"
+                ),  # lane
+                go.Cone(
+                    x=pos1[0],
+                    y=pos1[1],
+                    z=pos1[2],
+                    u=[rot1[0]],
+                    v=[rot1[1]],
+                    w=[rot1[2]],
+                    sizemode="absolute",
+                    sizeref=1,
+                    showscale=False,
+                    name=views[0].camera.name,  # camera 1 direction
+                    colorscale=[[0, "red"], [1, "red"]],  # Red color
+                    cmin=0,
+                    cmax=1,
+                ),  # Trick to force a single color
+                go.Cone(
+                    x=pos2[0],
+                    y=pos2[1],
+                    z=pos2[2],
+                    u=[rot2[0]],
+                    v=[rot2[1]],
+                    w=[rot2[2]],
+                    sizemode="absolute",
+                    sizeref=1,
+                    showscale=False,
+                    name=views[1].camera.name,  # camera 2 direction
+                    colorscale=[[0, "blue"], [1, "blue"]],  # Red color
+                    cmin=0,
+                    cmax=1,
+                ),  # Trick to force a single color
+                go.Scatter3d(
+                    x=x[1:3],
+                    y=y[1:3],
+                    z=z[1:3],
+                    mode="lines",
+                    name="Pit",
+                    line=dict(width=5, color="red"),
+                ),  # end of the bowling lane
             ],
-            )
-
-        lane.update_scenes(
-            aspectmode="data"
         )
 
-        lane.update_layout(
-            title="Bowling Lane"
-            )
+        lane.update_scenes(aspectmode="data")
 
-        graph = dcc.Graph(figure = lane, 
-            style={"width": "100%", "height": "95vh"})
+        lane.update_layout(title="Bowling Lane")
 
-        page = html.Div(
-            children = graph
-        )
+        graph = dcc.Graph(figure=lane, style={"width": "100%", "height": "95vh"})
+
+        page = html.Div(children=graph)
 
         return {self.__class__.__name__: page}
-
-        
-        

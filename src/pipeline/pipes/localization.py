@@ -1,23 +1,28 @@
-import cv2 as cv
-import numpy as np
-import pipeline.plot_utils as plot_utils
 import math
 
-from sklearn.kernel_ridge import KernelRidge
-from scipy.interpolate import make_smoothing_spline
-
-from pipeline.pipe import Pipe
-from pipeline.environment import Environment
-from pipeline.environment import Ball_Trajectory_2D
-from pipeline.environment import Ball_Trajectory_3D
-from pipeline.environment import DataManager
-
+import cv2 as cv
 import dash_player as dp
-from dash import html, dcc
+import numpy as np
 import plotly.graph_objects as go
+from cv2.typing import MatLike
+from dash import dcc, html
+from numpy.typing import NDArray
+from scipy.interpolate import make_smoothing_spline
+from sklearn.kernel_ridge import KernelRidge
+
+import pipeline.plot_utils as plot_utils
+from pipeline.environment import (
+    Ball_Trajectory_2D,
+    Ball_Trajectory_3D,
+    DataManager,
+    Environment,
+    Video,
+)
+from pipeline.pipe import Pipe
+
 
 class Lane_Detector(Pipe):
-    def execute(self, params):
+    def execute(self, params: dict):
         try:
             scales = params.get("scale", [0.7, 0.7])
         except Exception as _:
@@ -29,13 +34,14 @@ class Lane_Detector(Pipe):
             # reads the frame in the middle of the video
             capture.set(cv.CAP_PROP_POS_MSEC, duration * 1000 / 2)
             ret, frame = capture.read()
-            points = self.__manual_point_selection(frame, scale=scales[i])
+            view.lane.corners = np.array(
+                self.__manual_point_selection(frame, scale=scales[i])
+            )
             capture.set(cv.CAP_PROP_POS_FRAMES, 0)
-            view.lane.corners = points
-            detection_results.update({view.camera.name: points})
+            detection_results.update({view.camera.name: view.lane.corners})
         DataManager.save(detection_results, self.save_name)
 
-    def load(self, params):
+    def load(self, params: dict):
         try:
             visualization = params.get("visualization", Environment.visualization)
         except AttributeError as _:
@@ -60,7 +66,7 @@ class Lane_Detector(Pipe):
                         frame, (int(point[0]), int(point[1])), 2, (0, 0, 0), 1
                     )
                 frames.append(frame)
-        
+
         if visualization:
             frame1 = frames[0]
             frame2 = frames[1]
@@ -73,35 +79,35 @@ class Lane_Detector(Pipe):
             )
             stacked_frame = np.hstack((frame1, frame2_resized))
             frame_to_plot = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
-            cv.imshow("Visualization", frame_to_plot)
+            cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
             cv.waitKey(2000)
 
-    def __manual_point_selection(self, image, scale=0.5):
+    def __manual_point_selection(self, image: MatLike, scale: float = 0.5):
         selected_points = []
         upscale = 1 / scale
 
         def select_point(event, x, y, flags, param):
             if event == cv.EVENT_LBUTTONDOWN:
                 cv.circle(image, (x, y), 3, (0, 0, 255), -1)
-                cv.imshow("Visualization", image)
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, image)
                 x = x * upscale
                 y = y * upscale
                 selected_points.append([x, y])
 
         image = cv.resize(image, None, fx=scale, fy=scale)
-        cv.imshow("Visualization", image)
-        cv.setMouseCallback("Visualization", select_point)
+        cv.imshow(Environment.CV_VISUALIZATION_NAME, image)
+        cv.setMouseCallback(Environment.CV_VISUALIZATION_NAME, select_point)
 
         cv.waitKey(0)
 
         return selected_points
 
-    def plotly_page(self, params):
+    def plotly_page(self, params: dict) -> None:
         return None
 
 
 class Ball_Tracker(Pipe):
-    def execute(self, params):
+    def execute(self, params: dict):
         try:
             save_path = params.get("save_path")
         except Exception as _:
@@ -140,7 +146,7 @@ class Ball_Tracker(Pipe):
         # Save the final results
         DataManager.save(tracking_results, self.save_name)
 
-    def load(self, params):
+    def load(self, params: dict):
         try:
             visualization = params.get("visualization", Environment.visualization)
         except AttributeError as _:
@@ -178,7 +184,7 @@ class Ball_Tracker(Pipe):
                 )
                 stacked_frame = np.hstack((frame1, frame2_resized))
                 frame_to_plot = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
-                cv.imshow("Visualization", frame_to_plot)
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
                 cv.waitKey(1)
 
             cap1.set(cv.CAP_PROP_POS_FRAMES, 0)
@@ -186,12 +192,12 @@ class Ball_Tracker(Pipe):
 
     def __track_moving_object(
         self,
-        video,
-        roi_points,
-        kernel_size=20,
-        color_range=[(0, 0, 0), (255, 255, 255)],
-        playback_scaling=0.5,
-        visualization=False,
+        video: Video,
+        roi_points: NDArray,
+        kernel_size: int = 20,
+        color_range: list[tuple, tuple] = [(0, 0, 0), (255, 255, 255)],
+        playback_scaling: float = 0.5,
+        visualization: bool = False,
     ):
         if not video.capture.isOpened():
             print("Could not open the video!")
@@ -207,14 +213,13 @@ class Ball_Tracker(Pipe):
         )
 
         # Initialize found trajectories
-        trajectories = set()
+        trajectories: set[Ball_Trajectory_2D] = set()
 
         # Get video properties and initialize polygonal bounding box
         _, _, width_height = video.get_video_properties()
         tot_frames = int(video.capture.get(cv.CAP_PROP_FRAME_COUNT))
         width, height = width_height
         mask_poly = self.__create_polygonal_mask(roi_points, 20, (height, width, 3))
-
 
         # Process each frame
         while True:
@@ -253,16 +258,16 @@ class Ball_Tracker(Pipe):
             # Obtain the gray image + Gaussian blur for Hough Circles detection
             # Preprocessing: apply a Gaussian blur
             frame_result_gray = cv.cvtColor(frame_result, cv.COLOR_BGR2GRAY)
-            frame_result_gray = cv.GaussianBlur(
-                frame_result_gray, (9, 9), 2
-            )  # Stronger blur to reduce noise
+            # frame_result_gray = cv.GaussianBlur(
+            #     frame_result_gray, (9, 9), 2
+            # )  # Stronger blur to reduce noise
             circles = cv.HoughCircles(
                 frame_result_gray,
                 cv.HOUGH_GRADIENT,
-                dp=1,  # Inverse ratio of resolution
-                minDist=140,  # Minimum distance between circles
+                dp=1.05,  # Inverse ratio of resolution
+                minDist=100,  # Minimum distance between circles
                 param1=45,  # Canny edge threshold
-                param2=12,  # Circle detection threshold
+                param2=17,  # Circle detection threshold
                 minRadius=2,  # Minimum radius
                 maxRadius=70,  # Maximum radius
             )
@@ -278,10 +283,10 @@ class Ball_Tracker(Pipe):
 
             if visualization:
                 for trajectory in trajectories:
-                    trajectory.plot_onto(frame_result)
+                    trajectory.plot_onto(frame_poly)
 
                 frame_to_plot = cv.resize(
-                    frame_result, dsize=(0, 0), fx=playback_scaling, fy=playback_scaling
+                    frame_poly, dsize=(0, 0), fx=playback_scaling, fy=playback_scaling
                 )
 
                 frame_to_plot = cv.putText(
@@ -305,7 +310,7 @@ class Ball_Tracker(Pipe):
                     lineType=cv.LINE_AA,
                 )
 
-                cv.imshow("Visualization", frame_to_plot)
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
                 cv.waitKey(2)
 
         # Reroll video
@@ -314,24 +319,27 @@ class Ball_Tracker(Pipe):
         return self.__choose_trajectory(trajectories)
 
     # Returns the longest trajectory from the proposed ones
-    def __choose_trajectory(self, trajectories):
+    def __choose_trajectory(self, trajectories: list[Ball_Trajectory_2D]):
         best_trajectory = None
         oldest_start = float("inf")
         for trajectory in trajectories:
-            start_frame = 0
-            while trajectory.get_by_frame(start_frame) is None:
-                start_frame += 1
-            if start_frame < oldest_start:
-                oldest_start = start_frame
+            if trajectory.start < oldest_start:
+                oldest_start = trajectory.start
                 best_trajectory = trajectory
         return best_trajectory
 
     # Updates the ongoing trajectories discarding the one that cannot be continued
-    def __update_trajectories(self, curr_trajectories, circles, curr_frame, tot_frames):
+    def __update_trajectories(
+        self,
+        curr_trajectories: list[Ball_Trajectory_2D],
+        circles: list[tuple[int]],
+        curr_frame: int,
+        tot_frames: int,
+    ):
         to_assign = set(curr_trajectories.copy())
         res_trajectories = set()
         while len(circles) > 0:
-            best_couple = None
+            best_couple: dict[str, object] | None = None
             if (
                 len(to_assign) > 0
             ):  # find the best trajectory-circle couple and assign that to the trajectory
@@ -360,7 +368,7 @@ class Ball_Tracker(Pipe):
 
                 # place the best match into the trajectory and add that to the results
                 x, y, r = best_couple["circle"]
-                best_couple["traj"].set_by_frame((x, y), r, curr_frame)
+                best_couple["traj"].set_by_frame(np.array((x, y)), r, curr_frame)
                 res_trajectories.add(best_couple["traj"])
 
                 # remove the trajectory
@@ -371,56 +379,61 @@ class Ball_Tracker(Pipe):
                 for circle in circles:
                     new_trajectory = Ball_Trajectory_2D(tot_frames)
                     x, y, r = circle
-                    new_trajectory.set_by_frame((x, y), r, curr_frame)
+                    new_trajectory.set_by_frame(np.array((x, y)), r, curr_frame)
                     res_trajectories.add(new_trajectory)
                 break
         return res_trajectories
 
     # Smoothes out noise from trajectory and detected radiuses
-    def __interpolate(self, trajectory, visualization):
-        start = 0
-        while trajectory.image_points[start] is None:
-            start += 1
-        end = start
-        while end < trajectory.n_frames and trajectory.image_points[end] is not None:
-            end += 1
-        points = np.array(trajectory.image_points[start:end])
-        radiuses = np.array(trajectory.radiuses[start:end])
+    def __interpolate(self, trajectory: Ball_Trajectory_2D, visualization: bool):
+        coords = trajectory.get_coords()
+        radiuses = trajectory.get_radiuses()
+        start, end = trajectory.start, trajectory.end
 
         # Spline Interpolation for the trajectory
         lam = 100
         t = np.arange(start, end, 1)
-        y1 = points[:,0]
-        y2 = points[:,1]
+        y1 = coords[:, 0]
+        y2 = coords[:, 1]
         spl_x = make_smoothing_spline(t, y1, lam=lam)
         spl_y = make_smoothing_spline(t, y2, lam=lam)
-        
-        if visualization : 
-            plot_utils.plot_2d_spline_interpolation(t, y1, y2, spl_x(t), spl_y(t))
-    
 
-        # Ridge Regression with the Kernel Trick using additive chi2 as a kernel for the radius 
-        t = np.array(range(start, end)).reshape(-1,1)
+        if visualization:
+            plot_utils.plot_2d_spline_interpolation(t, y1, y2, spl_x(t), spl_y(t))
+
+        # Ridge Regression with the Kernel Trick using additive chi2 as a kernel for the radius
+        t = np.arange(start, end).reshape(-1, 1)
         y = radiuses.reshape(-1, 1)
 
         alpha = 1
-        radius_predictor = KernelRidge(alpha=alpha, kernel='additive_chi2')
+        radius_predictor = KernelRidge(alpha=alpha, kernel="additive_chi2")
         radius_predictor.fit(t, y)
 
         new_radiuses = radius_predictor.predict(t)
 
-        if visualization : 
-            plot_utils.plot_regression(x=t.reshape(-1), y_train=radiuses, y_pred=new_radiuses, label="Radius regression")
+        if visualization:
+            plot_utils.plot_regression(
+                x=t.reshape(-1),
+                y_train=radiuses,
+                y_pred=new_radiuses,
+                title="Radius regression",
+                xlabel="Frames",
+                ylabel="Radius"
+            )
 
         # Creating a new trajectory and visualizing it
         new_trajectory = Ball_Trajectory_2D(trajectory.n_frames)
         for frame in t:
-            new_trajectory.set_by_frame((spl_x(frame), spl_y(frame)), radius_predictor.predict([frame]), curr_frame=frame[0])
+            new_trajectory.set_by_frame(
+                np.array((spl_x(frame)[0], spl_y(frame)[0])),
+                radius_predictor.predict([frame]),
+                curr_frame=frame[0],
+            )
 
         return new_trajectory
-        
+
     # Creates a binary polygonal mask of a given size
-    def __create_polygonal_mask(self, corners, padding, size):
+    def __create_polygonal_mask(self, corners: NDArray, padding: int, size: int):
         polygon_corners = np.array(corners, dtype=np.int32)
 
         # Create a black mask and fill the polygon
@@ -434,9 +447,15 @@ class Ball_Tracker(Pipe):
         if size[2] == 3:  # makes the mask 3 channel if the input size was a 3 channel
             mask = cv.cvtColor(mask, cv.COLOR_GRAY2BGR)
         return mask
-    
+
     # Stores a video containing only the tracked part of the image
-    def __save_tracking_video(self, video, trajectory, output_path, visualization):
+    def __save_tracking_video(
+        self,
+        video: Video,
+        trajectory: Ball_Trajectory_2D,
+        output_path: str,
+        visualization: bool,
+    ):
         # Reroll video
         video.capture.set(cv.CAP_PROP_POS_FRAMES, 0)
 
@@ -456,25 +475,25 @@ class Ball_Tracker(Pipe):
             xy, r = trajectory.get_by_frame(frame_counter)
 
             mask = np.zeros_like(frame)
-            if xy is not None:
+            if xy[0] is not None:
                 x, y = xy
                 x, y, r = int(x), int(y), int(r)
-                mask = cv.circle(mask, (x, y), int(r)+10, (255,255,255), -1)
+                mask = cv.circle(mask, (x, y), int(r) + 10, (255, 255, 255), -1)
 
             frame = cv.bitwise_and(frame, mask)
 
             if visualization:
-                frame_to_show = cv.resize(frame, dsize=(0,0), fx=0.5, fy=0.5)
-                cv.imshow("Visualization", frame_to_show)
+                frame_to_show = cv.resize(frame, dsize=(0, 0), fx=0.5, fy=0.5)
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_show)
                 cv.waitKey(1)
-            
+
             out.write(frame)
 
             frame_counter += 1
-        
+
         out.release()
-    
-    def plotly_page(self, params):
+
+    def plotly_page(self, params: dict) -> dict[str, html.Div]:
         try:
             save_path = params["save_path"]
         except Exception as _:
@@ -483,34 +502,46 @@ class Ball_Tracker(Pipe):
         view = Environment.get_views()
         view1, view2 = view[0], view[1]
 
-        folder = save_path.split('/')[-1]
+        folder = save_path.split("/")[-1]
 
-        url1= f"/video/{folder}/{view1.camera.name}/{Environment.savename}_{Environment.video_names[0]}"
+        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.savename}_{Environment.video_names[0]}"
         url2 = f"/video/{folder}/{view2.camera.name}/{Environment.savename}_{Environment.video_names[1]}"
 
+        dp1 = dp.DashPlayer(
+            id="player-1",
+            url=url1,
+            controls=True,
+            width="100%",
+            loop=True,
+            playing=True,
+        )
+        dp2 = dp.DashPlayer(
+            id="player-2",
+            url=url2,
+            controls=True,
+            width="100%",
+            loop=True,
+            playing=True,
+        )
 
-        dp1 = dp.DashPlayer(id='player-1', url=url1,
-                             controls=True, width="100%", loop=True, playing=True)
-        dp2 = dp.DashPlayer(id='player-2', url=url2,
-                             controls=True, width="100%", loop=True, playing=True)
-
-
-        page = html.Div(children=[
-            html.Div(
-                children=dp1, style={'heigth': 'auto', 'width': '49%', 'display': 'inline-block'}
-            ),
-            html.Div(
-                children=dp2, style={'heigth': 'auto', 'width': '49%', 'display': 'inline-block'}
-            )
-            ])
+        page = html.Div(
+            children=[
+                html.Div(
+                    children=dp1,
+                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
+                ),
+                html.Div(
+                    children=dp2,
+                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
+                ),
+            ]
+        )
         return {self.__class__.__name__: page}
-        return super().plotly_page(params)
-            
 
 
 class Ball_Localization(Pipe):
-    def execute(self, params):
-        try : 
+    def execute(self, params: dict):
+        try:
             visualization = params.get("visualization", False)
         except Exception as _:
             visualization = Environment.visualization
@@ -528,55 +559,68 @@ class Ball_Localization(Pipe):
         points_cam1 = views[0].trajectory.image_points
         points_cam2 = views[1].trajectory.image_points
 
-
-        # Find the point in which both trajectories exist 
+        # Find the point in which both trajectories exist
         start = 0
-        while points_cam1[start] is None or points_cam2[start] is None:
+        while points_cam1[start, 0] is None or points_cam2[start, 0] is None:
             start += 1
 
         # Consider only the not None points and prepare them for triangulatePoints
-        points1 = np.array(
-            [[x1, y1] for (x1, y1) in points_cam1[start:-1]], dtype=np.float32
-        ).T
-        points2 = np.array(
-            [[x2, y2] for (x2, y2) in points_cam2[start:-1]], dtype=np.float32
-        ).T
+        points1 = points_cam1[start:-1].T.astype(np.float32)
+        points2 = points_cam2[start:-1].T.astype(np.float32)
 
         # Triangulate
-        homogeneous_points = cv.triangulatePoints(proj1, proj2, points1[0], points2[0])
+        homogeneous_points = cv.triangulatePoints(proj1, proj2, points1, points2)
         points_3D = (homogeneous_points[:3] / homogeneous_points[3]).T
 
         # Acceping only points over the bowling lane
-        lane_coords = Environment.coords['world_lane']
+        lane_coords = Environment.coords["world_lane"]
         minx, miny, _ = min(lane_coords)
         maxx, maxy, _ = max(lane_coords)
         start_over = None
         end_over = None
-        for frame, (x,y,_) in enumerate(points_3D):
-            if start_over is None and minx <= x <= maxx and miny <= y <= maxy: # into the lane x and y
+        for frame, (x, y, _) in enumerate(points_3D):
+            if (
+                start_over is None and minx <= x <= maxx and miny <= y <= maxy
+            ):  # into the lane x and y
                 start_over = frame
-            elif start_over is not None and end_over is None and (x <= minx or x >= maxx or y <= miny or y >= maxy): # out of the lane
+            elif (
+                start_over is not None
+                and end_over is None
+                and (x <= minx or x >= maxx or y <= miny or y >= maxy)
+            ):  # out of the lane
                 end_over = frame
 
-        if end_over is None: # case in which the trajectory ends inside the bowling lane
+        if start_over is None:
+            raise Exception("The ball trajectory detected is outside the bowling lane")
+
+        if (
+            end_over is None
+        ):  # case in which the trajectory ends inside the bowling lane
             end_over = len(points_3D)
 
-        points_3D = points_3D[start_over:end_over]    
+        points_3D = points_3D[start_over:end_over]
 
         # Spline Interpolation of the 3D trajectory
         lam = 100
         t = np.arange(0, len(points_3D), 1)
-        y1 = points_3D[:,0]
-        y2 = points_3D[:,1]
-        y3 = points_3D[:,2]
+        y1 = points_3D[:, 0]
+        y2 = points_3D[:, 1]
+        y3 = points_3D[:, 2]
         spl_x = make_smoothing_spline(t, y1, lam=lam)
         spl_y = make_smoothing_spline(t, y2, lam=lam)
         spl_z = make_smoothing_spline(t, y3, lam=lam)
         if visualization:
-            plot_utils.plot_3d_spline_interpolation(t, points_3D[:,0], points_3D[:,1], points_3D[:,2], 
-                                                spl_x(t), spl_y(t), spl_z(t))
+            plot_utils.plot_3d_spline_interpolation(
+                t,
+                points_3D[:, 0],
+                points_3D[:, 1],
+                points_3D[:, 2],
+                spl_x(t),
+                spl_y(t),
+                spl_z(t),
+            )
 
-        points_3D = np.array([spl_x(t), spl_y(t), spl_z(t)]).T.reshape(-1,3)
+        points_3D = np.array([spl_x(t), spl_y(t), spl_z(t)]).T.reshape(-1, 3)
 
         # Storing a 3D Ball Trajectory
         trajectory_3d = Ball_Trajectory_3D(views[0].trajectory.n_frames)
@@ -585,17 +629,18 @@ class Ball_Localization(Pipe):
         for i, frame in enumerate(range(start_3d, end_3d)):
             trajectory_3d.set_by_frame(points_3D[i], frame)
 
-
         # Storing the resulting trajectory
         Environment.set("3D_trajectory", trajectory_3d)
         DataManager.save(trajectory_3d, self.save_name)
 
-        if visualization : 
-            self.visualize()
+        if visualization:
+            ax = plot_utils.get_3d_plot("Ball Localization : 3D Visualization")
+            plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
+            plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
+            plot_utils.show()
 
-
-    def load(self, params):
-        try : 
+    def load(self, params: dict):
+        try:
             visualization = params.get("visualization", False)
         except Exception as _:
             visualization = Environment.visualization
@@ -605,97 +650,102 @@ class Ball_Localization(Pipe):
         Environment.set("3D_trajectory", trajectory_3d)
 
         if visualization:
-            self.visualize()
+            ax = plot_utils.get_3d_plot("Ball Localization : 3D Visualization")
+            plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
+            plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
+            plot_utils.show()
 
-    def visualize(self):
-        fig, ax = plot_utils.get_3d_plot("Ball Localization : 3D Visualization")
-
-        lane_coords = np.array(Environment.coords["world_lane"])
-        min_offset = 3
-        max_offset = 3
-        min = np.min(lane_coords[:, :]) - min_offset
-        max = np.max(lane_coords[:, :]) + max_offset
-        plot_utils.set_limits(ax, min, max)
-        plot_utils.view_angle(ax, elev=45, azim=15)
-
-        plot_utils.bowling_lane(ax, lane_coords)
-
-        traj = Environment.get("3D_trajectory")
-
-        plot_utils.trajectory(ax, traj)
-        
-        # Show the plot
-        plot_utils.show()
-    
-    def plotly_page(self, params):
+    def plotly_page(self, params: dict) -> dict[str, html.Div]:
         trajectory_3d = DataManager.load(self.save_name)
-        
+
         def makesphere(center, radius, resolution=10):
             x, y, z = center
-            u, v = np.mgrid[0:2*np.pi:resolution*2j, 0:np.pi:resolution*1j]
-            X = radius * np.cos(u)*np.sin(v) + x
-            Y = radius * np.sin(u)*np.sin(v) + y
+            u, v = np.mgrid[
+                0 : 2 * np.pi : resolution * 2j, 0 : np.pi : resolution * 1j
+            ]
+            X = radius * np.cos(u) * np.sin(v) + x
+            Y = radius * np.sin(u) * np.sin(v) + y
             Z = radius * np.cos(v) + z
             return go.Surface(x=X, y=Y, z=Z, opacity=0.6)
 
         xyz_t = trajectory_3d.get_coords()
-        xt = xyz_t[:,0]
-        yt = xyz_t[:,1]
-        zt = xyz_t[:,2]
+        xt = xyz_t[:, 0]
+        yt = xyz_t[:, 1]
+        zt = xyz_t[:, 2]
 
         lane_pos = np.array(Environment.coords["world_lane"])
-        x = lane_pos[:,0]
-        y = lane_pos[:,1]
-        z = lane_pos[:,2]        
+        x = lane_pos[:, 0]
+        y = lane_pos[:, 1]
+        z = lane_pos[:, 2]
 
         # TODO compute actual radius
-        r = (21.83/2)/100
+        r = (21.83 / 2) / 100
 
         lane = go.Figure(
             data=[
-                go.Mesh3d(x=x, y=y, z=z, color='lightblue', opacity=0.8, name="Bowling Lane"),  # lane
-                go.Scatter3d(x=x[1:3], y=y[1:3], z=z[1:3], mode="lines", name="Pit", line=dict(width=5, color='red')), # end of the bowling lane
-                go.Scatter3d(x=xt, y=yt, z=zt, mode="lines", name="Trajectory", line=dict(width=5, color='green')) # end of the bowling lane
-                ],
+                go.Mesh3d(
+                    x=x, y=y, z=z, color="lightblue", opacity=0.8, name="Bowling Lane"
+                ),  # lane
+                go.Scatter3d(
+                    x=x[1:3],
+                    y=y[1:3],
+                    z=z[1:3],
+                    mode="lines",
+                    name="Pit",
+                    line=dict(width=5, color="red"),
+                ),  # end of the bowling lane
+                go.Scatter3d(
+                    x=xt,
+                    y=yt,
+                    z=zt,
+                    mode="lines",
+                    name="Trajectory",
+                    line=dict(width=5, color="green"),
+                ),  # end of the bowling lane
+            ],
             layout=go.Layout(
-                updatemenus=[{
-                        "type": "buttons", 
+                updatemenus=[
+                    {
+                        "type": "buttons",
                         "direction": "left",
-                        "x": 1, "y": 1,
+                        "x": 1,
+                        "y": 1,
                         "buttons": [
                             {
                                 "label": "Play",
                                 "method": "animate",
-                                "args": [None, {"frame": {"duration": 5, "redraw": True}, 
-                                                "fromcurrent": True, 
-                                                "mode": "immediate"}]
+                                "args": [
+                                    None,
+                                    {
+                                        "frame": {"duration": 5, "redraw": True},
+                                        "fromcurrent": True,
+                                        "mode": "immediate",
+                                    },
+                                ],
                             },
                             {
                                 "label": "Pause",
                                 "method": "animate",
-                                "args": [None, {"frame": {"duration": 0, "redraw": False}, 
-                                "mode": "immediate"}]  # Stops animation
-                            }
-                        ]
-                    }],
-                title="Bowling Lane"
+                                "args": [
+                                    None,
+                                    {
+                                        "frame": {"duration": 0, "redraw": False},
+                                        "mode": "immediate",
+                                    },
+                                ],  # Stops animation
+                            },
+                        ],
+                    }
+                ],
+                title="Bowling Lane",
             ),
-            frames=[
-                go.Frame(data=makesphere(pos, r)) for pos in xyz_t
-            ]
-            )
-
-        lane.update_scenes(
-            aspectmode="data"
+            frames=[go.Frame(data=makesphere(pos, r)) for pos in xyz_t],
         )
 
-        graph = dcc.Graph(figure = lane, 
-            style={"width": "100%", "height": "95vh"})
+        lane.update_scenes(aspectmode="data")
 
-        page = html.Div(
-            children = graph
-        )
+        graph = dcc.Graph(figure=lane, style={"width": "100%", "height": "95vh"})
+
+        page = html.Div(children=graph)
 
         return {self.__class__.__name__: page}
-
-    

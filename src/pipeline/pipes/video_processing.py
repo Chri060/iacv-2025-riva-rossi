@@ -1,28 +1,27 @@
-from pipeline.environment import Environment
-from pipeline.environment import Video
-from pipeline.pipe import Pipe
-import cv2 as cv
-import librosa
-import scipy
-import numpy as np
-
 import warnings
 
+import cv2 as cv
 import dash_player as dp
+import librosa
+import numpy as np
+import scipy
 from dash import html
+
+from pipeline.environment import Environment, Video
+from pipeline.pipe import Pipe
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 class Synchronizer(Pipe):
-    def execute(self, params):
+    def execute(self, params: dict):
         # Load Parameters
         try:
             save_path = params["save_path"]
         except Exception as _:
             raise Exception("Missing required parameter : save_path")
-        try: 
+        try:
             visualization = params.get("visualization", Environment.visualization)
         except AttributeError as _:
             visualization = Environment.visualization
@@ -87,12 +86,12 @@ class Synchronizer(Pipe):
         view1.video = Video(output1_path)
         view2.video = Video(output2_path)
 
-    def load(self, params):
+    def load(self, params: dict):
         try:
             save_path = params["save_path"]
         except Exception as _:
             raise Exception("Missing required parameter : save_path")
-        try: 
+        try:
             visualization = params.get("visualization", Environment.visualization)
         except AttributeError as _:
             visualization = Environment.visualization
@@ -121,7 +120,7 @@ class Synchronizer(Pipe):
                 stacked_frame = np.hstack((frame1, frame2_resized))
                 stacked_frame = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
                 cv.imshow(
-                    "Visualization",
+                    Environment.CV_VISUALIZATION_NAME,
                     stacked_frame,
                 )
                 cv.waitKey(1)
@@ -130,7 +129,7 @@ class Synchronizer(Pipe):
         view2.video = Video(output2_path)
 
     # Returns an estimated time shift in milliseconds between two video files based on audio correlation
-    def __get_time_shift(self, video1_path, video2_path):
+    def __get_time_shift(self, video1_path: str, video2_path: str):
         # Extract the audio from the videos
         audio1, sr1 = librosa.load(video1_path, sr=None, mono=True)
         audio2, sr2 = librosa.load(video2_path, sr=None, mono=True)
@@ -151,14 +150,14 @@ class Synchronizer(Pipe):
 
     def __apply_shift(
         self,
-        videos,
-        output_path1,
-        output_path2,
-        target_fps,
-        target_duration,
-        start1,
-        start2,
-        visualization,
+        videos: list[Video],
+        output_path1: str,
+        output_path2: str,
+        target_fps: float,
+        target_duration: float,
+        start1: float,
+        start2: float,
+        visualization: bool,
     ):
         fourcc1 = cv.VideoWriter_fourcc(*"avc1")
         fourcc2 = cv.VideoWriter_fourcc(*"avc1")
@@ -202,7 +201,7 @@ class Synchronizer(Pipe):
                     lineType=cv.LINE_AA,
                 )
                 stacked_frame = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
-                cv.imshow("Visualization", stacked_frame)
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, stacked_frame)
                 cv.waitKey(1)
             out1.write(frame1)
             out2.write(frame2)
@@ -210,7 +209,7 @@ class Synchronizer(Pipe):
             current_time1 += frame_time
             current_time2 += frame_time
 
-    def plotly_page(self, params):
+    def plotly_page(self, params: dict) -> dict[str, html.Div]:
         try:
             save_path = params["save_path"]
         except Exception as _:
@@ -219,49 +218,61 @@ class Synchronizer(Pipe):
         view = Environment.get_views()
         view1, view2 = view[0], view[1]
 
-        folder = save_path.split('/')[-1]
+        folder = save_path.split("/")[-1]
 
-        url1= f"/video/{folder}/{view1.camera.name}/{Environment.savename}_{Environment.video_names[0]}"
+        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.savename}_{Environment.video_names[0]}"
         url2 = f"/video/{folder}/{view2.camera.name}/{Environment.savename}_{Environment.video_names[1]}"
 
+        dp1 = dp.DashPlayer(
+            id="player-1",
+            url=url1,
+            controls=True,
+            width="100%",
+            loop=True,
+            playing=True,
+        )
+        dp2 = dp.DashPlayer(
+            id="player-2",
+            url=url2,
+            controls=True,
+            width="100%",
+            loop=True,
+            playing=True,
+        )
 
-        dp1 = dp.DashPlayer(id='player-1', url=url1,
-                             controls=True, width="100%", loop=True, playing=True)
-        dp2 = dp.DashPlayer(id='player-2', url=url2,
-                             controls=True, width="100%", loop=True, playing=True)
-
-
-        page = html.Div(children=[
-            html.Div(
-                children=dp1, style={'heigth': 'auto', 'width': '49%', 'display': 'inline-block'}
-            ),
-            html.Div(
-                children=dp2, style={'heigth': 'auto', 'width': '49%', 'display': 'inline-block'}
-            )
-            ])
+        page = html.Div(
+            children=[
+                html.Div(
+                    children=dp1,
+                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
+                ),
+                html.Div(
+                    children=dp2,
+                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
+                ),
+            ]
+        )
         return {self.__class__.__name__: page}
 
 
-
-
 class Stabilizer(Pipe):
-    def execute(self, params):
+    def execute(self, params: dict):
         return super().execute(params)
 
-    def load(self, params):
+    def load(self, params: dict):
         return super().load(params)
-    
-    def plotly_page(self, params):
+
+    def plotly_page(self, params: dict):
         return None
 
 
 class Undistorcer(Pipe):
-    def execute(self, params):
+    def execute(self, params: dict):
         try:
             save_path = params["save_path"]
         except Exception as _:
             raise Exception("Missing required parameter : save_path")
-        try: 
+        try:
             visualization = params.get("visualization", Environment.visualization)
         except AttributeError as _:
             visualization = Environment.visualization
@@ -288,8 +299,10 @@ class Undistorcer(Pipe):
                     newCameraMatrix=new_intrinsic,
                 )
                 if visualization:
-                    frame_to_plot = cv.resize(frame_undistort, dsize=(0,0), fx=0.5, fy=0.5)
-                    cv.imshow("Visualization", frame_to_plot)
+                    frame_to_plot = cv.resize(
+                        frame_undistort, dsize=(0, 0), fx=0.5, fy=0.5
+                    )
+                    cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
                     cv.waitKey(1)
                 out.write(frame_undistort)
             cap.release()
@@ -297,7 +310,7 @@ class Undistorcer(Pipe):
             view.video = Video(output_path)
             cam.intrinsic = new_intrinsic
 
-    def load(self, params):
+    def load(self, params: dict):
         try:
             save_path = params["save_path"]
         except Exception as _:
@@ -332,10 +345,10 @@ class Undistorcer(Pipe):
                 )
                 stacked_frame = np.hstack((frame1, frame2_resized))
                 frame_to_plot = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
-                cv.imshow("Visualization", frame_to_plot)
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
                 cv.waitKey(1)
 
-    def plotly_page(self, params):
+    def plotly_page(self, params: dict) -> dict[str, html.Div]:
         try:
             save_path = params["save_path"]
         except Exception as _:
@@ -344,24 +357,38 @@ class Undistorcer(Pipe):
         view = Environment.get_views()
         view1, view2 = view[0], view[1]
 
-        folder = save_path.split('/')[-1]
+        folder = save_path.split("/")[-1]
 
         url1 = f"/video/{folder}/{view1.camera.name}/{Environment.savename}_{Environment.video_names[0]}"
         url2 = f"/video/{folder}/{view2.camera.name}/{Environment.savename}_{Environment.video_names[1]}"
 
+        dp1 = dp.DashPlayer(
+            id="player-1",
+            url=url1,
+            controls=True,
+            width="100%",
+            loop=True,
+            playing=True,
+        )
+        dp2 = dp.DashPlayer(
+            id="player-2",
+            url=url2,
+            controls=True,
+            width="100%",
+            loop=True,
+            playing=True,
+        )
 
-        dp1 = dp.DashPlayer(id='player-1', url=url1,
-                             controls=True, width="100%", loop=True, playing=True)
-        dp2 = dp.DashPlayer(id='player-2', url=url2,
-                             controls=True, width="100%", loop=True, playing=True)
-
-
-        page = html.Div(children=[
-            html.Div(
-                children=dp1, style={'heigth': 'auto', 'width': '49%', 'display': 'inline-block'}
-            ),
-            html.Div(
-                children=dp2, style={'heigth': 'auto', 'width': '49%', 'display': 'inline-block'}
-            )
-            ])
+        page = html.Div(
+            children=[
+                html.Div(
+                    children=dp1,
+                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
+                ),
+                html.Div(
+                    children=dp2,
+                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
+                ),
+            ]
+        )
         return {self.__class__.__name__: page}

@@ -29,8 +29,14 @@ pipeline:
     }
   - name: lane_detection
     type: load
+    params: {
+      visualization: True
+    }
   - name: extrinsic
     type: load
+    params: {
+      visualization: True
+    }
   - name: ball_tracker
     type: execute
     params: {
@@ -38,7 +44,7 @@ pipeline:
       visualization: True
     }
   - name: ball_localization
-    type: execute
+    type: load
     params: {
       visualization: True
     }
