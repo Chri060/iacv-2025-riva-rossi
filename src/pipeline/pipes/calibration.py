@@ -10,6 +10,8 @@ import pipeline.plot_utils as plot_utils
 import plotly.graph_objects as go
 from dash import dcc, html
 
+import random
+
 
 class Intrinsic_Calibration(Pipe):
     def __process_params(self, params):
@@ -46,60 +48,59 @@ class Intrinsic_Calibration(Pipe):
             image_points = []  # 2D points in image plane
             images = glob.glob(os.path.join(images_path, camera_name, "*.jpg"))
 
-            # Check if any images were found
+            print(f"Calibrating {camera_name} ...")
+
+            if images:
+                for input_image in images:
+                    img = cv.imread(input_image)
+                    if img is None:
+                        print(f"Error reading image: {input_image}")
+                        continue
+                
+                    refined_corners = self.__find_checkerboard(img, checkerboard_size, criteria, visualization)
+
+                    if refined_corners is not None:
+                        object_points.append(world_points)
+                        image_points.append(refined_corners)
+
+                        img_shape = img.shape[:2]
+
             if not images:
-                print(
-                    f"No images found in the specified directory. Path : {images_path}"
-                )
-                return None, None
+                print("No images found in the specified directory. Switching to video calibration")
+                videos = glob.glob(os.path.join(images_path, camera_name, "*.mp4"))
+                if not videos:
+                    print(f"No images nor videos found for {images_path}")
+                    return None, None
+                for video in videos:
+                    capture = cv.VideoCapture(video)
+                    total_frames = int(capture.get(cv.CAP_PROP_FRAME_COUNT))  # Get total number of frames
+                    
+                    if total_frames < 60:
+                        print(f"Warning: {video} has less than 20 frames.")
 
-            print(f"Calibrating {camera_name} with {len(images)} images.")
+                    frame_indices = sorted(random.sample(range(total_frames), min(60, total_frames)))  # Select 40 unique random frames
 
-            # Loop through each image in the folder
-            for input_image in images:
-                img = cv.imread(input_image)
-                if img is None:
-                    print(f"Error reading image: {input_image}")
-                    continue
+                    for idx in frame_indices:
+                        capture.set(cv.CAP_PROP_POS_FRAMES, idx)  # Jump to the selected frame
+                        ret, frame = capture.read()
 
-                # Convert image to grayscale
-                gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+                        if not ret:
+                            print(f"Unable to read frame {idx} from {video}")
+                            continue
 
-                # Apply histogram equalization for better contrast
-                clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-                gray = clahe.apply(gray)
+                        refined_corners = self.__find_checkerboard(frame, checkerboard_size, criteria, visualization)
 
-                # Define flags for the chessboard detection
-                flags = (
-                    cv.CALIB_CB_ADAPTIVE_THRESH
-                    + cv.CALIB_CB_FAST_CHECK
-                    + cv.CALIB_CB_NORMALIZE_IMAGE
-                )
+                        if refined_corners is not None:
+                            object_points.append(world_points)
+                            image_points.append(refined_corners)
+                            img_shape = frame.shape[:2]  # Ensure img_shape is updated correctly
 
-                # Detect the checkerboard
-                ret, corners = cv.findChessboardCorners(gray, checkerboard_size, flags)
+                    capture.release()
 
-                if ret:
-                    # Store object points
-                    object_points.append(world_points)
-
-                    # Refine corner locations for better accuracy
-                    refined_corners = cv.cornerSubPix(
-                        gray, corners, (11, 11), (-1, -1), criteria
-                    )
-                    image_points.append(refined_corners)
-
-                    # Draw detected corners on the image for visualization
-                    if visualization:
-                        cv.drawChessboardCorners(
-                            img, checkerboard_size, refined_corners, ret
-                        )
-                        cv.imshow("Visualization", img)
-                        cv.waitKey(2000)
+            print(f"Checkerboard matches : {len(image_points)}")
 
             # Proceed with calibration if at least one checkerboard was detected
             if len(object_points) > 0:
-                img_shape = gray.shape[::-1]  # Image size (width, height)
                 ret, mtx, dist, _, _ = cv.calibrateCamera(
                     object_points, image_points, img_shape, None, None
                 )
@@ -114,6 +115,45 @@ class Intrinsic_Calibration(Pipe):
 
         # Save the calibration_results at the end of the calibration process for every view
         DataManager.save(calibration_results, self.save_name)
+
+    def __find_checkerboard(self, img, checkerboard_size, criteria, visualization):
+
+        # Convert image to grayscale
+        gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+        # Apply histogram equalization for better contrast
+        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        gray = clahe.apply(gray)
+
+        # Define flags for the chessboard detection
+        flags = (
+            cv.CALIB_CB_ADAPTIVE_THRESH
+            + cv.CALIB_CB_FAST_CHECK
+            + cv.CALIB_CB_NORMALIZE_IMAGE
+        )
+
+        # Detect the checkerboard
+        ret, corners = cv.findChessboardCorners(gray, checkerboard_size, flags)
+
+        if ret:
+            # Store object points
+            # Refine corner locations for better accuracy
+            refined_corners = cv.cornerSubPix(
+                gray, corners, (11, 11), (-1, -1), criteria
+            )
+            # Draw detected corners on the image for visualization
+            if visualization:
+                cv.drawChessboardCorners(
+                    img, checkerboard_size, refined_corners, ret
+                )
+                to_plot = cv.resize(img, dsize=(0,0), fx=0.5, fy=0.5)
+                cv.imshow("Visualization", to_plot)
+                cv.waitKey(1)
+            
+            return refined_corners
+        return None
+            
+        
 
     def load(self, params):
         cal_results = DataManager.load(self.save_name)

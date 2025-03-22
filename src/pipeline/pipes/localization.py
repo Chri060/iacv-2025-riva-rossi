@@ -459,7 +459,7 @@ class Ball_Tracker(Pipe):
             if xy is not None:
                 x, y = xy
                 x, y, r = int(x), int(y), int(r)
-                mask = cv.circle(mask, (x, y), int(r), (255,255,255), -1)
+                mask = cv.circle(mask, (x, y), int(r)+10, (255,255,255), -1)
 
             frame = cv.bitwise_and(frame, mask)
 
@@ -555,7 +555,7 @@ class Ball_Localization(Pipe):
         for frame, (x,y,_) in enumerate(points_3D):
             if start_over is None and minx <= x <= maxx and miny <= y <= maxy: # into the lane x and y
                 start_over = frame
-            elif end_over is None and (x <= minx or x >= maxx or y <= miny or y >= maxy): # out of the lane
+            elif start_over is not None and end_over is None and (x <= minx or x >= maxx or y <= miny or y >= maxy): # out of the lane
                 end_over = frame
 
         if end_over is None: # case in which the trajectory ends inside the bowling lane

@@ -1,0 +1,45 @@
+# To be used during development
+savename: hometest
+global:
+  video_names: ["test_3.mp4", "test_3.mp4"]
+  camera_names: ["nothing_2a_h", "huawei"]
+  paths:
+    originals: "resources/videos/originals"
+  coords:
+    world_lane: [[0, 0, 0], [12.1, 0, 0], [12.1, -5.3, 0], [0, -5.3, 0]]
+  visualization: False
+pipeline:
+  - name: intrinsic
+    type: load
+    params: {
+      images_path : "resources/calibration/",
+      checkerboard_sizes : [[9,6],[9,7]]
+    }
+  - name: video_synchronization
+    type: load
+    params: {
+      save_path : "resources/videos/sync"
+    }
+  - name: video_stabilization
+    type: load
+  - name: video_undistortion
+    type: load
+    params: {
+      save_path: "resources/videos/undistorted"
+    }
+  - name: lane_detection
+    type: load
+  - name: extrinsic
+    type: load
+  - name: ball_tracker
+    type: execute
+    params: {
+      save_path: "resources/videos/tracking",
+      visualization: True
+    }
+  - name: ball_localization
+    type: execute
+    params: {
+      visualization: True
+    }
+

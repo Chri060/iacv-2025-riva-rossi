@@ -12,7 +12,7 @@ pipeline:
   - name: intrinsic
     type: execute
     params: {
-      images_path : "resources/images/calibration",
+      images_path : "resources/calibration",
     }
   - name: video_synchronization
     type: execute

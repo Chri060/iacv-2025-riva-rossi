@@ -2,11 +2,16 @@
 numpy~=2.0.2
 pyyaml
 
+# Interpolation
+scipy~=1.13.1
 
 # Image processing
 opencv-python~=4.11.0.86
 opencv-contrib-python
 
-matplotlib~=3.9.4
-scipy~=1.13.1
+# Audio synchronization
 librosa~=0.10.2.post1
+
+# Visualization
+dash
+matplotlib~=3.9.4
