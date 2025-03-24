@@ -209,7 +209,7 @@ class Ball_Tracker(Pipe):
 
         # Initialize the background subtractor
         bg_subtractor = cv.createBackgroundSubtractorMOG2(
-            history=500, varThreshold=16, detectShadows=True
+            history=300, varThreshold=15, detectShadows=True
         )
 
         # Initialize found trajectories
@@ -231,6 +231,26 @@ class Ball_Tracker(Pipe):
 
             # Apply polygonal mask
             frame_poly = cv.bitwise_and(frame, mask_poly)
+
+            def enhance_contrast(frame):
+                lab = cv.cvtColor(frame, cv.COLOR_BGR2LAB)
+                l_channel, a, b = cv.split(lab)
+                clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+                cl = clahe.apply(l_channel)
+                limg = cv.merge((cl, a, b))
+                return cv.cvtColor(limg, cv.COLOR_LAB2BGR)
+
+            def suppress_reflections(frame):
+                # Convert to grayscale and apply a threshold to detect bright spots
+                gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+                _, reflection_mask = cv.threshold(gray, 240, 255, cv.THRESH_BINARY)
+                reflection_mask = cv.dilate(reflection_mask, np.ones((5, 5), np.uint8))
+                frame[reflection_mask == 255] = 0  # Set reflection areas to black
+                return frame
+
+            frame_poly = enhance_contrast(frame_poly)
+            frame_poly = suppress_reflections(frame_poly)
+
 
             # Apply background subtraction
             mask_fg = bg_subtractor.apply(frame_poly)
