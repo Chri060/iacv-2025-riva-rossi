@@ -129,24 +129,29 @@ class Synchronizer(Pipe):
         view2.video = Video(output2_path)
 
     # Returns an estimated time shift in milliseconds between two video files based on audio correlation
-    def __get_time_shift(self, video1_path: str, video2_path: str):
-        # Extract the audio from the videos
-        audio1, sr1 = librosa.load(video1_path, sr=None, mono=True)
-        audio2, sr2 = librosa.load(video2_path, sr=None, mono=True)
+    def __get_time_shift(self, video1_path: str, video2_path: str) -> float:
+        try:
+            audio1, sr1 = librosa.load(video1_path, sr=None, mono=True)
+            audio2, sr2 = librosa.load(video2_path, sr=None, mono=True)
 
-        # Check if the audio sampling rates matches
-        if sr1 != sr2:
-            raise ValueError("Sampling rates do not match")
+            target_sr = min(sr1, sr2)
+            if sr1 != target_sr:
+                audio1 = librosa.resample(audio1, orig_sr=sr1, target_sr=target_sr)
+            if sr2 != target_sr:
+                audio2 = librosa.resample(audio2, orig_sr=sr2, target_sr=target_sr)
 
-        # Compute the cross-correlation between the two audios
-        corr = scipy.signal.correlate(audio1, audio2, mode="full")
+            audio1 = (audio1 - np.mean(audio1)) / (np.std(audio1) + 1e-8)
+            audio2 = (audio2 - np.mean(audio2)) / (np.std(audio2) + 1e-8)
 
-        # Compute the lag between the two signals
-        lag = np.argmax(corr) - (len(audio2) - 1)
+            corr = scipy.signal.correlate(audio1, audio2, mode="full")
+            lag = np.argmax(corr) - (len(audio2) - 1)
 
-        # Convert the lag in time difference
-        time_shift = lag / sr1
-        return time_shift
+            time_shift = lag / target_sr
+            return time_shift
+
+        except Exception as e:
+            print(f"Error processing audio: {e}")
+            return 0.0
 
     def __apply_shift(
         self,
@@ -159,8 +164,8 @@ class Synchronizer(Pipe):
         start2: float,
         visualization: bool,
     ):
-        fourcc1 = cv.VideoWriter_fourcc(*"avc1")
-        fourcc2 = cv.VideoWriter_fourcc(*"avc1")
+        fourcc1 = cv.VideoWriter_fourcc(*"mp4v")
+        fourcc2 = cv.VideoWriter_fourcc(*"mp4v")
         _, _, width_height1 = videos[0].get_video_properties()
         _, _, width_height2 = videos[1].get_video_properties()
         out1 = cv.VideoWriter(output_path1, fourcc1, target_fps, width_height1)
@@ -282,7 +287,7 @@ class Undistorcer(Pipe):
             cap = view.video.capture
             fps, duration, width_height = view.video.get_video_properties()
             output_path = f"{save_path}/{cam.name}/{Environment.savename}_{Environment.video_names[i]}"
-            fourcc = cv.VideoWriter_fourcc(*"avc1")
+            fourcc = cv.VideoWriter_fourcc(*"mp4v")
             out = cv.VideoWriter(output_path, fourcc, fps, width_height)
             new_intrinsic, _ = cv.getOptimalNewCameraMatrix(
                 cam.intrinsic, cam.distortion, width_height, 1, width_height

@@ -1,7 +1,7 @@
 # Executes the entire standard pipeline
 savename: default
 global:
-  video_names: ["opt_7.MP4", "opt_7.MP4"]
+  video_names: ["test.mp4", "test.mp4"]
   camera_names: ["nothing_2a", "lumix"]
   paths:
     originals: "resources/videos/originals"
@@ -15,21 +15,21 @@ pipeline:
       images_path : "resources/calibration",
     }
   - name: video_synchronization
-    type: load
+    type: execute
     params: {
       save_path : "resources/videos/sync"
     }
   - name: video_stabilization
-    type: load
+    type: execute
   - name: video_undistortion
-    type: load
+    type: execute
     params: {
       save_path : "resources/videos/undistorted"
     }
   - name: lane_detection
-    type: load
+    type: execute
   - name: extrinsic
-    type: load
+    type: execute
   - name: ball_tracker
     type: execute
     params: {

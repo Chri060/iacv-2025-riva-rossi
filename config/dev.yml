@@ -1,7 +1,7 @@
 # To be used during development
 savename: default
 global:
-  video_names: ["opt_7.MP4", "opt_7.MP4"]
+  video_names: ["test.MP4", "test.MP4"]
   camera_names: ["nothing_2a", "lumix"]
   paths:
     originals: "resources/videos/originals"

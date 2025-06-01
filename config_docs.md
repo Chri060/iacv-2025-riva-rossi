@@ -167,7 +167,7 @@ Each pipe has a `name` referring to its name and a `type` that can be either `ex
   savename: default
   global:
     video_names: ["opt_7.MP4", "opt_7.MP4"]
-    camera_names: ["nothing_2a", "lumix"]
+    camera_names: ["nothing", "lumix"]
     paths:
       originals: "resources/videos/originals"
     coords:
