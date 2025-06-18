@@ -10,12 +10,12 @@ global:
   visualization: True
 pipeline:
   - name: intrinsic
-    type: load
+    type: execute
     params: {
       images_path : "resources/calibration",
     }
   - name: video_synchronization
-    type: load
+    type: execute
     params: {
       save_path : "resources/videos/sync"
     }

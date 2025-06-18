@@ -143,6 +143,9 @@ class Ball_Tracker(Pipe):
                 {"name": view.camera.name, "trajectory": view.trajectory}
             )
 
+
+        print(tracking_results)
+
         # Save the final results
         DataManager.save(tracking_results, self.save_name)
 
