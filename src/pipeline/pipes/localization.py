@@ -482,7 +482,7 @@ class Ball_Tracker(Pipe):
         # Get video properties and initialize polygonal bounding box
         fps, _, width_height = video.get_video_properties()
 
-        fourcc1 = cv.VideoWriter_fourcc(*"avc1")
+        fourcc1 = cv.VideoWriter_fourcc(*"mp4v")
         out = cv.VideoWriter(output_path, fourcc1, fps, width_height)
 
         frame_counter = 0

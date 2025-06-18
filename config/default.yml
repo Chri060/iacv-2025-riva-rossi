@@ -15,7 +15,7 @@ pipeline:
       images_path : "resources/calibration",
     }
   - name: video_synchronization
-    type: execute
+    type: load
     params: {
       save_path : "resources/videos/sync"
     }
