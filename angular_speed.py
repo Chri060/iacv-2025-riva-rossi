@@ -240,69 +240,30 @@ class RotationAnalyzer:
     def plot_results(self):
         valid_angular_speeds = [speed for speed in self.angular_speeds if speed is not None]
         valid_timestamps_speed = [self.timestamps[i] for i, speed in enumerate(self.angular_speeds) if speed is not None]
-        valid_radii = [r for r in self.ball_radii if r is not None]
-        valid_timestamps_radii = [self.timestamps[i] for i, r in enumerate(self.ball_radii) if r is not None]
-        if not valid_angular_speeds and not valid_radii:
-            print("No valid data to plot.")
-            return
-        plt.figure(figsize=(12, 10))
-        plt.subplot(3, 1, 1)
-        if valid_angular_speeds:
-            plt.plot(valid_timestamps_speed, valid_angular_speeds, 'b-', linewidth=2)
-            plt.title('Bowling Ball Angular Speed Over Time')
-            plt.xlabel('Time (seconds)')
-            plt.ylabel('Angular Speed (rad/s)')
-            plt.grid(True, alpha=0.3)
-        else:
-            plt.text(0.5, 0.5, "No valid angular speed data", ha='center', va='center', transform=plt.gca().transAxes)
-        plt.subplot(3, 1, 2)
-        if valid_radii:
-            plt.plot(valid_timestamps_radii, valid_radii, 'g-', linewidth=2)
-            plt.title('Bowling Ball Radius Over Time (Pixels)')
-            plt.xlabel('Time (seconds)')
-            plt.ylabel('Radius (pixels)')
-            plt.grid(True, alpha=0.3)
-        else:
-            plt.text(0.5, 0.5, "No valid radius data", ha='center', va='center', transform=plt.gca().transAxes)
-        plt.subplot(3, 1, 3)
-        if valid_angular_speeds:
-            plt.hist(valid_angular_speeds, bins=20, alpha=0.7, edgecolor='black')
-            plt.title('Distribution of Angular Speeds')
-            plt.xlabel('Angular Speed (rad/s)')
-            plt.ylabel('Frequency')
-            plt.grid(True, alpha=0.3)
-        else:
-            plt.text(0.5, 0.5, "No valid angular speed data for histogram", ha='center', va='center', transform=plt.gca().transAxes)
-        plt.tight_layout()
-        plt.show()
-        if valid_angular_speeds:
-            avg_speed_rad = np.mean(valid_angular_speeds)
-            std_speed_rad = np.std(valid_angular_speeds)
-            max_speed_rad = np.max(valid_angular_speeds)
-            min_speed_rad = np.min(valid_angular_speeds)
-            print(f"\nResults Summary (Angular Speed):")
-            print(f"Average angular speed: {avg_speed_rad:.2f} ± {std_speed_rad:.2f} rad/s")
-            print(f"Speed range: {min_speed_rad:.2f} to {max_speed_rad:.2f} rad/s")
-            print(f"Total valid measurements: {len(valid_angular_speeds)}")
-        if valid_radii:
-            avg_radius = np.mean(valid_radii)
-            std_radius = np.std(valid_radii)
-            min_radius = np.min(valid_radii)
-            max_radius = np.max(valid_radii)
-            print(f"\nBall Radius Summary (Pixels):")
-            print(f"Average radius: {avg_radius:.2f} ± {std_radius:.2f} pixels")
-            print(f"Radius range: {min_radius} to {max_radius} pixels")
 
+        if not valid_angular_speeds:
+            print("No valid data")
+            return
+
+        plt.figure(figsize=(12, 4))
+
+        plt.plot(valid_timestamps_speed, valid_angular_speeds, 'b-', linewidth=2)
+        plt.title('Angular speed over time')
+        plt.xlabel('Time (seconds)')
+        plt.ylabel('Angular speed (rad/s)')
+        plt.grid(True, alpha=0.3)
+
+        plt.show()
+
+        print(f"\nResults Summary (Angular Speed):")
+        print(f"Average angular speed: {np.mean(valid_angular_speeds):.2f} ± {np.std(valid_angular_speeds):.2f} rad/s")
+        print(f"Speed range: {np.min(valid_angular_speeds):.2f} to {np.max(valid_angular_speeds):.2f} rad/s")
+        print(f"Total valid measurements: {len(valid_angular_speeds)}")
 
 if __name__ == "__main__":
     video_path = "resources/videos/tracking/nothing_2a/default_test.mp4"
-    try:
-        analyzer = RotationAnalyzer(video_path)
-        print("Starting bowling ball analysis with improved KLT and RANSAC...")
-        analyzer.analyze_video()
-        print("Analysis complete. Plotting results...")
-        analyzer.plot_results()
-    except ValueError as e:
-        print(e)
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+    analyzer = RotationAnalyzer(video_path)
+    print("Starting bowling ball analysis with improved KLT and RANSAC...")
+    analyzer.analyze_video()
+    print("Analysis complete. Plotting results...")
+    analyzer.plot_results()
