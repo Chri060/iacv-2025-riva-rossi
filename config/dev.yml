@@ -1,8 +1,8 @@
 # To be used during development
 savename: default
 global:
-  video_names: ["test.MP4", "test.MP4"]
-  camera_names: ["nothing_2a", "lumix"]
+  video_names: ["trim_start.mp4", "trim_start.mp4"]
+  camera_names: ["nothing_2a", "iphone"]
   paths:
     originals: "resources/videos/originals"
   coords:
@@ -11,23 +11,26 @@ global:
 pipeline:
   - name: intrinsic
     type: load
+    params: {
+      images_path : "resources/calibration",
+    }
   - name: video_synchronization
-    type: load
+    type: execute
     params: {
       save_path : "resources/videos/sync"
     }
-  - name: video_stabilization
-    type: load
-  - name: video_undistortion
-    type: load
-    params: {
-      save_path: "resources/videos/undistorted"
-    }
+#  - name: video_stabilization
+#    type: execute
+#  - name: video_undistortion
+#    type: execute
+#    params: {
+#      save_path: "resources/videos/undistorted"
+#    }
   - name: lane_detection
     type: load
   - name: extrinsic
     type: load
-  - name: ball_tracker
+  - name: ball_tracker_yolo
     type: execute
     params: {
       save_path: "resources/videos/tracking",

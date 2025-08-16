@@ -1,5 +1,7 @@
 import math
 
+from ultralytics import YOLO
+
 import cv2 as cv
 import dash_player as dp
 import numpy as np
@@ -98,56 +100,17 @@ class Lane_Detector(Pipe):
         cv.imshow(Environment.CV_VISUALIZATION_NAME, image)
         cv.setMouseCallback(Environment.CV_VISUALIZATION_NAME, select_point)
 
-        cv.waitKey(0)
+        while True:
+            if cv.waitKey(0) & 0xff == ord("q"):
+                return selected_points
 
-        return selected_points
 
     def plotly_page(self, params: dict) -> None:
         return None
 
-
 class Ball_Tracker(Pipe):
     def execute(self, params: dict):
-        try:
-            save_path = params.get("save_path")
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-        try:
-            visualization = params.get("visualization", Environment.visualization)
-        except AttributeError as _:
-            visualization = Environment.visualization
-
-        tracking_results = []
-
-        for i, view in enumerate(Environment.get_views()):
-            video = view.video
-            roi = view.lane.corners
-            output_path = f"{save_path}/{view.camera.name}/{Environment.savename}_{Environment.video_names[i]}"
-            trajectory = self.__track_moving_object(
-                video,
-                roi,
-                kernel_size=5,
-                playback_scaling=0.6,
-                visualization=visualization,
-            )
-
-            # interpolate the roughly found trajectory
-            trajectory = self.__interpolate(trajectory, visualization)
-
-            # store the trajectory into the view
-            view.trajectory = trajectory
-
-            self.__save_tracking_video(video, trajectory, output_path, visualization)
-
-            tracking_results.append(
-                {"name": view.camera.name, "trajectory": view.trajectory}
-            )
-
-
-        print(tracking_results)
-
-        # Save the final results
-        DataManager.save(tracking_results, self.save_name)
+        pass
 
     def load(self, params: dict):
         try:
@@ -192,6 +155,95 @@ class Ball_Tracker(Pipe):
 
             cap1.set(cv.CAP_PROP_POS_FRAMES, 0)
             cap2.set(cv.CAP_PROP_POS_FRAMES, 0)
+
+
+    def plotly_page(self, params: dict) -> dict[str, html.Div]:
+        try:
+            save_path = params["save_path"]
+        except Exception as _:
+            raise Exception("Missing required parameter : save_path")
+
+        view = Environment.get_views()
+        view1, view2 = view[0], view[1]
+
+        folder = save_path.split("/")[-1]
+
+        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.savename}_{Environment.video_names[0]}"
+        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.savename}_{Environment.video_names[1]}"
+
+        dp1 = dp.DashPlayer(
+            id="player-1",
+            url=url1,
+            controls=True,
+            width="100%",
+            loop=True,
+            playing=True,
+        )
+        dp2 = dp.DashPlayer(
+            id="player-2",
+            url=url2,
+            controls=True,
+            width="100%",
+            loop=True,
+            playing=True,
+        )
+
+        page = html.Div(
+            children=[
+                html.Div(
+                    children=dp1,
+                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
+                ),
+                html.Div(
+                    children=dp2,
+                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
+                ),
+            ]
+        )
+        return {self.__class__.__name__: page}
+
+class Ball_Tracker_Hough(Ball_Tracker):
+    def execute(self, params:  dict):
+        try:
+            save_path = params.get("save_path")
+        except Exception as _:
+            raise Exception("Missing required parameter : save_path")
+        try:
+            visualization = params.get("visualization", Environment.visualization)
+        except AttributeError as _:
+            visualization = Environment.visualization
+
+        tracking_results = []
+
+        for i, view in enumerate(Environment.get_views()):
+            video = view.video
+            roi = view.lane.corners
+            output_path = f"{save_path}/{view.camera.name}/{Environment.savename}_{Environment.video_names[i]}"
+            trajectory = self.__track_moving_object(
+                video,
+                roi,
+                kernel_size=5,
+                playback_scaling=0.6,
+                visualization=visualization,
+            )
+
+            # interpolate the roughly found trajectory
+            trajectory = self.__interpolate(trajectory, visualization)
+
+            # store the trajectory into the view
+            view.trajectory = trajectory
+
+            self.__save_tracking_video(video, trajectory, output_path, visualization)
+
+            tracking_results.append(
+                {"name": view.camera.name, "trajectory": view.trajectory}
+            )
+
+
+        print(tracking_results)
+
+        # Save the final results
+        DataManager.save(tracking_results, self.save_name)
 
     def __track_moving_object(
         self,
@@ -444,7 +496,7 @@ class Ball_Tracker(Pipe):
                 ylabel="Radius"
             )
 
-        # Creating a new trajectory and visualizing it
+        # Creating a new trajectory
         new_trajectory = Ball_Trajectory_2D(trajectory.n_frames)
         for frame in t:
             new_trajectory.set_by_frame(
@@ -516,51 +568,137 @@ class Ball_Tracker(Pipe):
 
         out.release()
 
-    def plotly_page(self, params: dict) -> dict[str, html.Div]:
+class  Ball_Tracker_YOLO(Ball_Tracker):
+    def execute(self, params: dict):
         try:
-            save_path = params["save_path"]
+            save_path = params.get("save_path")
         except Exception as _:
             raise Exception("Missing required parameter : save_path")
+        try:
+            visualization = params.get("visualization", Environment.visualization)
+        except AttributeError as _:
+            visualization = Environment.visualization
 
-        view = Environment.get_views()
-        view1, view2 = view[0], view[1]
+        tracking_results = []
+        model = YOLO("./resources/models/yolov8l.pt")
 
-        folder = save_path.split("/")[-1]
+        for i, view in enumerate(Environment.get_views()):
+            view.trajectory = self.__track_ball(model, view.video, visualization)
+            tracking_results.append(
+                {"name": view.camera.name, "trajectory": view.trajectory}
+            )
 
-        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.savename}_{Environment.video_names[0]}"
-        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.savename}_{Environment.video_names[1]}"
+        # Save the final results
+        DataManager.save(tracking_results, self.save_name)
 
-        dp1 = dp.DashPlayer(
-            id="player-1",
-            url=url1,
-            controls=True,
-            width="100%",
-            loop=True,
-            playing=True,
+    
+    def __track_ball(self, model ,video : Video,visualization) -> Ball_Trajectory_2D:
+        video.capture.set(cv.CAP_PROP_POS_FRAMES, 0)
+        tot_frames = int(video.capture.get(cv.CAP_PROP_FRAME_COUNT))
+
+        last_detected_centre = None
+        old_gray = None
+        mask = None
+        trajectory = Ball_Trajectory_2D(tot_frames)  # Store all centers
+        last_box = None  # Last detected bounding box
+        CROP_SCALE = 20
+        frame_idx = 0
+
+        # Optical flow parameters
+        lk_params = dict(
+            winSize=(15, 15),
+            maxLevel=2,
+            criteria=(cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
         )
-        dp2 = dp.DashPlayer(
-            id="player-2",
-            url=url2,
-            controls=True,
-            width="100%",
-            loop=True,
-            playing=True,
-        )
 
-        page = html.Div(
-            children=[
-                html.Div(
-                    children=dp1,
-                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
-                ),
-                html.Div(
-                    children=dp2,
-                    style={"heigth": "auto", "width": "49%", "display": "inline-block"},
-                ),
-            ]
-        )
-        return {self.__class__.__name__: page}
+        while True:
+            ret, frame = video.capture.read()
+            if not ret:
+                break
 
+            frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+
+            # Decide YOLO crop
+            if last_box is None:
+                yolo_frame = frame
+                x1_offset, y1_offset = 0, 0
+            else:
+                x1, y1, x2, y2 = last_box
+                cx, cy = (x1 + x2)//2, (y1 + y2)//2
+                w = int((x2 - x1) * CROP_SCALE)
+                h = int((y2 - y1) * CROP_SCALE)
+                x1_crop = max(cx - w//2, 0)
+                y1_crop = max(cy - h//2, 0)
+                x2_crop = min(cx + w//2, frame.shape[1])
+                y2_crop = min(cy + h//2, frame.shape[0])
+                yolo_frame = frame[y1_crop:y2_crop, x1_crop:x2_crop]
+                yolo_frame = cv.resize(yolo_frame, (640, 640))
+                x1_offset, y1_offset = x1_crop, y1_crop
+
+            # Run YOLO
+            results = model(yolo_frame, conf=0.05, classes=[32], augment = True)[0]
+
+            ball_boxes = []
+            for cls, box in zip(results.boxes.cls, results.boxes.xyxy):
+                # Scale coordinates back to original frame
+                if last_box is not None:
+                    scale_x = (x2_crop - x1_crop) / yolo_frame.shape[1]
+                    scale_y = (y2_crop - y1_crop) / yolo_frame.shape[0]
+                    x1b, y1b, x2b, y2b = box
+                    x1b = int(x1b * scale_x + x1_offset)
+                    y1b = int(y1b * scale_y + y1_offset)
+                    x2b = int(x2b * scale_x + x1_offset)
+                    y2b = int(y2b * scale_y + y1_offset)
+                    ball_boxes.append([x1b, y1b, x2b, y2b])
+                else:
+                    ball_boxes.append(list(map(int, box)))
+
+            if visualization:
+                vis_frame = frame.copy()
+                for b in ball_boxes:
+                    x1, y1, x2, y2 = b
+                    cv.rectangle(vis_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                trajectory.plot_onto(vis_frame)
+                frame_to_plot = cv.resize(
+                    vis_frame, dsize=(0, 0), fx=0.6, fy=0.6
+                )
+                frame_to_plot = cv.putText(
+                    frame_to_plot,
+                    str(frame_idx),
+                    (5, 30),
+                    cv.FONT_HERSHEY_SIMPLEX,
+                    fontScale=0.5,
+                    color=(255, 255, 0),
+                    thickness=1,
+                    lineType=cv.LINE_AA,
+                )
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
+                cv.waitKey(2)
+
+            # Update tracking
+            if len(ball_boxes) > 0:
+                x1, y1, x2, y2 = ball_boxes[0]
+                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                radius = max(x2 - x1, y2 - y1) // 2
+                last_detected_centre = np.array([[[cx, cy]]], dtype=np.float32)
+                old_gray = frame_gray.copy()
+                last_box = [x1, y1, x2, y2]
+
+                trajectory.set_by_frame(np.array([cx, cy]), radius, frame_idx)
+            elif last_detected_centre is not None:
+                # Optical flow fallback
+                p1, st, err = cv.calcOpticalFlowPyrLK(old_gray, frame_gray, last_detected_centre, None, **lk_params)
+                if p1 is not None and st[0][0] == 1:
+                    a, b = p1[0][0].astype(int)
+                    last_detected_centre = p1.reshape(-1, 1, 2)
+                    old_gray = frame_gray.copy()
+                    trajectory.set_by_frame(np.array([a, b]), None, frame_idx)
+
+            frame_idx += 1
+
+        trajectory.interpolate_radiuses() #linear interpolation of missing radiuses (not detected by optical flow)
+        return trajectory
+        
 
 class Ball_Localization(Pipe):
     def execute(self, params: dict):
