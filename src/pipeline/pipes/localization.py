@@ -598,10 +598,8 @@ class  Ball_Tracker_YOLO(Ball_Tracker):
 
         last_detected_centre = None
         old_gray = None
-        mask = None
         trajectory = Ball_Trajectory_2D(tot_frames)  # Store all centers
         last_box = None  # Last detected bounding box
-        CROP_SCALE = 20
         frame_idx = 0
 
         # Optical flow parameters
@@ -625,8 +623,8 @@ class  Ball_Tracker_YOLO(Ball_Tracker):
             else:
                 x1, y1, x2, y2 = last_box
                 cx, cy = (x1 + x2)//2, (y1 + y2)//2
-                w = int((x2 - x1) * CROP_SCALE)
-                h = int((y2 - y1) * CROP_SCALE)
+                w = int((x2 - x1) * 12.5)
+                h = int((y2 - y1) * 12.5)
                 x1_crop = max(cx - w//2, 0)
                 y1_crop = max(cy - h//2, 0)
                 x2_crop = min(cx + w//2, frame.shape[1])
@@ -697,6 +695,7 @@ class  Ball_Tracker_YOLO(Ball_Tracker):
             frame_idx += 1
 
         trajectory.interpolate_radiuses() #linear interpolation of missing radiuses (not detected by optical flow)
+
         return trajectory
         
 

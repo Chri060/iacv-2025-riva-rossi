@@ -170,9 +170,11 @@ class Ball_Trajectory_2D:
             curr_rad = self.radiuses[curr_frame]
             if curr_pos[0] is not None:
                 curr_pos = (int(curr_pos[0]), int(curr_pos[1]))
-                curr_rad = int(curr_rad)
+                if curr_rad is not  None:
+                    curr_rad = int(curr_rad)
+                    cv.circle(image, curr_pos, curr_rad, self.color, 1)
                 to_plot.append(curr_pos)
-                cv.circle(image, curr_pos, curr_rad, self.color, 1)
+
         to_plot = np.array(to_plot, dtype=np.int32).reshape((-1, 1, 2))
         cv.polylines(image, to_plot, isClosed=False, color=self.color, thickness=100)
 

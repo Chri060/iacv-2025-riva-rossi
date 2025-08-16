@@ -7,7 +7,7 @@ from pipeline.environment import Environment
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        config_path = "./config/default.yml"
+        config_path = "./config/dev.yml"
     else:
         config_path = sys.argv[1]
     with open(config_path) as config_file:
