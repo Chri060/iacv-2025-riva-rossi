@@ -125,41 +125,39 @@ class Ball_Trajectory_2D:
 
     def interpolate_radiuses(self):
         """
-        Linear interpolation of missing radiuses 
+        Linear interpolation of missing radiuses.
+        - Interpolates between known values.
+        - Extrapolates forward using last two known values.
+        - Keeps leading None values untouched.
         """
         n = len(self.radiuses)
-    
+
         for i in range(n):
             if self.radiuses[i] is None:
                 # Find previous non-None
                 prev_index = i - 1
                 while prev_index >= 0 and self.radiuses[prev_index] is None:
                     prev_index -= 1
-                
+
                 # Find next non-None
                 next_index = i + 1
                 while next_index < n and self.radiuses[next_index] is None:
                     next_index += 1
-                
-                # Case 1: Both neighbors exist → interpolate
+
                 if prev_index >= 0 and next_index < n:
+                    # Case 1: interpolate between prev and next
                     prev_val = self.radiuses[prev_index]
                     next_val = self.radiuses[next_index]
                     self.radiuses[i] = prev_val + (next_val - prev_val) * (i - prev_index) / (next_index - prev_index)
-                # Case 2: Only previous exists → continue the sequence
+
                 elif prev_index >= 1:
+                    # Case 2: extrapolate forward using slope
                     diff = self.radiuses[prev_index] - self.radiuses[prev_index - 1]
                     self.radiuses[i] = self.radiuses[prev_index] + diff
+
                 elif prev_index == 0:
-                    # Only one previous number, just copy it
+                    # Only one previous number, just copy it forward
                     self.radiuses[i] = self.radiuses[prev_index]
-                # Case 3: Only next exists → continue backward sequence
-                elif next_index < n - 1:
-                    diff = self.radiuses[next_index + 1] - self.radiuses[next_index]
-                    self.radiuses[i] = self.radiuses[next_index] - diff
-                elif next_index < n:
-                    # Only one next number, just copy it
-                    self.radiuses[i] = self.radiuses[next_index]
 
     def plot_onto(self, image: MatLike) -> None:
         """
