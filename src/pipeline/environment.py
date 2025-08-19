@@ -361,12 +361,12 @@ class Environment:
         import pipeline.pipes.video_processing as vp
 
         pipes: dict[str, Pipe] = {
-            "intrinsic": cal.Intrinsic_Calibration,
+            "intrinsic": cal.IntrinsicCalibration,
             "video_synchronization": vp.Synchronizer,
             "video_stabilization": vp.Stabilizer,
             "video_undistortion": vp.Undistorcer,
             "lane_detection": loc.Lane_Detector,
-            "extrinsic": cal.Extrinsic_Calibration,
+            "extrinsic": cal.ExtrinsicCalibration,
             "ball_tracker_hough": loc.Ball_Tracker_Hough,
             "ball_tracker_yolo": loc.Ball_Tracker_YOLO,
             "ball_localization": loc.Ball_Localization,
@@ -387,6 +387,7 @@ class Environment:
             if proc_type == "execute":
                 pipe.execute(params)
             elif proc_type == "load":
+                if pipe_conf["name"] == "intrinsic" and pipe_conf["type"] == "load": continue
                 pipe.load(params)
 
         cv.destroyAllWindows()
