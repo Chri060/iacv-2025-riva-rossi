@@ -39,12 +39,12 @@ if __name__ == "__main__":
     from pipeline.pipe import Pipe
 
     pipes: dict[str, Pipe] = {
-        "intrinsic": cal.IntrinsicCalibration,
+        "intrinsic": cal.Intrinsic_Calibration,
         "video_synchronization": vp.Synchronizer,
         "video_stabilization": vp.Stabilizer,
         "video_undistortion": vp.Undistorcer,
-        "lane_detection": loc.LaneDetector,
-        "extrinsic": cal.ExtrinsicCalibration,
+        "lane_detection": loc.Lane_Detector,
+        "extrinsic": cal.Extrinsic_Calibration,
         "ball_tracker": loc.Ball_Tracker,
         "ball_localization": loc.Ball_Localization,
     }
