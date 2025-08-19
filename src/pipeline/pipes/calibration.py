@@ -1,6 +1,4 @@
-import glob
-import os
-import random
+import glob, os, random
 
 import cv2 as cv
 import numpy as np
@@ -67,9 +65,9 @@ class IntrinsicCalibration(Pipe):
             world_points[:, :2] = np.mgrid[0 : checkerboard_size[0], 0 : checkerboard_size[1]].T.reshape(-1, 2)
 
             # Storage for calibration
-            object_points = []  # 3D real-world points
-            image_points = []   # 2D image points
-            img_shape = None
+            object_points: list[np.ndarray] = []
+            image_points: list[np.ndarray] = []
+            img_shape: tuple[int, int] | None = None
 
             # Find all images (*.jpg) for this camera
             images = glob.glob(os.path.join(images_path, camera_name, "*.jpg"))
