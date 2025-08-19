@@ -26,7 +26,6 @@ class Camera:
     def __str__(self):
         return f"""---------------------------------------------\nCamera : {self.name}:\n> Intrinsic:\n{self.intrinsic}\n> Distortion:\n{self.distortion}\n> Position:\n{self.position}\n> Rotation:\n{self.rotation}\n---------------------------------------------"""
 
-
 class Video:
     def __init__(self, path: str):
         self.capture = cv.VideoCapture(path)  # opencv video capture
@@ -53,7 +52,6 @@ class Video:
 class Lane:
     def __init__(self, corners: NDArray | None = None):
         self.corners: NDArray | None = corners
-
 
 class Ball_Trajectory_2D:
     def __init__(
@@ -321,13 +319,13 @@ class Environment:
     camera_names: list[str] = []
     paths: dict[str, str] = {}
     env_vars: dict[str, object] = {}
-    savename: str = None
+    save_name: str = None
     __initialized: bool = False
 
     @staticmethod
     def initialize_globals(savename: str, global_parameters: dict) -> None:
         print(f"Saves as : {savename}")
-        Environment.savename = savename
+        Environment.save_name = savename
         Environment.video_names = global_parameters.get("video_names", [])
         Environment.camera_names = global_parameters.get("camera_names", [])
         Environment.paths = global_parameters.get("paths", {})
@@ -364,16 +362,15 @@ class Environment:
             "intrinsic": cal.IntrinsicCalibration,
             "video_synchronization": vp.SynchronizeVideo,
             "video_undistortion": vp.UndistortVideo,
-            "lane_detection": loc.Lane_Detector,
+            "lane_detection": loc.DetectLane,
             "extrinsic": cal.ExtrinsicCalibration,
-            "ball_tracker_hough": loc.Ball_Tracker_Hough,
-            "ball_tracker_yolo": loc.Ball_Tracker_YOLO,
-            "ball_localization": loc.Ball_Localization,
+            "ball_tracker": loc.TrackBall,
+            "ball_localization": loc.LocalizeBall,
         }
 
         # Initialize the pipes with the given savename
         for key in pipes.keys():
-            pipes.update({key: pipes.get(key)(Environment.savename)})
+            pipes.update({key: pipes.get(key)(Environment.save_name)})
 
         # Process each pipe
         for pipe_conf in pipeline_configs:

@@ -45,13 +45,13 @@ if __name__ == "__main__":
         "video_undistortion": vp.UndistortVideo,
         "lane_detection": loc.LaneDetector,
         "extrinsic": cal.ExtrinsicCalibration,
-        "ball_tracker": loc.Ball_Tracker,
-        "ball_localization": loc.Ball_Localization,
+        "ball_tracker": loc.TrackBall,
+        "ball_localization": loc.LocalizeBall,
     }
 
     print("Initializing Pipes :")
     for key in pipes.keys():
-        pipes.update({key: pipes.get(key)(Environment.savename)})
+        pipes.update({key: pipes.get(key)(Environment.save_name)})
         print(f"> {key}")
 
     pages = {}

@@ -1,5 +1,5 @@
 # Loads the full precomputed pipeline for showcasing purposes
-savename: default
+save_name: default
 global:
   video_names: ["test.MP4", "test.MP4"]
   camera_names: ["nothing_2a", "lumix"]

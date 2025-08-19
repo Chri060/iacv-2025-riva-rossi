@@ -1,5 +1,5 @@
 # To be used during development
-save_name: default
+save_name: dev
 global:
   video_names: ["full.mp4", "full.mp4"]
   camera_names: ["nothing_2a", "iphone"]
@@ -28,7 +28,7 @@ pipeline:
     type: load
   - name: extrinsic
     type: load
-  - name: ball_tracker_yolo
+  - name: ball_tracker
     type: load
     params: {
       save_path: "resources/videos/tracking",

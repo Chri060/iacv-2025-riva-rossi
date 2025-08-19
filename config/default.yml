@@ -1,5 +1,5 @@
 # Executes the entire standard pipeline
-savename: default
+save_name: default
 global:
   video_names: ["full.mp4", "full.mp4"]
   camera_names: ["nothing_2a", "iphone"]
@@ -30,7 +30,7 @@ pipeline:
     type: execute
   - name: extrinsic
     type: execute
-  - name: ball_tracker_yolo
+  - name: ball_tracker
     type: execute
     params: {
       save_path: "resources/videos/tracking"
