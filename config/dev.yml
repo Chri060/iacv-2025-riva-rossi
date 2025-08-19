@@ -1,5 +1,5 @@
 # To be used during development
-savename: default
+save_name: default
 global:
   video_names: ["full.mp4", "full.mp4"]
   camera_names: ["nothing_2a", "iphone"]
