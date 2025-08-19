@@ -1,17 +1,22 @@
 # Core
-numpy~=2.0.2
-pyyaml
+numpy~=2.2.6
+pyyaml~=6.0.2
 
 # Interpolation
-scipy~=1.13.1
+scipy~=1.16.1
 
 # Image processing
-opencv-python~=4.11.0.86
+opencv-python~=4.12.0.88
 opencv-contrib-python
 
 # Audio synchronization
-librosa~=0.10.2.post1
+librosa~=0.11.0
 
 # Visualization
-dash
-matplotlib~=3.9.4
+dash~=3.2.0
+matplotlib~=3.10.5
+
+plotly~=6.3.0
+ultralytics~=8.3.179
+scikit-learn~=1.7.1
+Flask~=3.1.1

@@ -227,6 +227,9 @@ class ExtrinsicCalibration(Pipe):
             # Compute camera position in world coordinates
             camera_position = -rotation_matrix.T @ translation_vector
 
+            # Set the height of the cameras to correct the planar scene inaccuracies
+            camera_position[2] = 1.63
+            
             # Camera orientation (world-to-camera rotation)
             camera_orientation = rotation_matrix.T
 

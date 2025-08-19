@@ -387,8 +387,10 @@ class Environment:
             if proc_type == "execute":
                 pipe.execute(params)
             elif proc_type == "load":
-                if pipe_conf["name"] == "intrinsic" and pipe_conf["type"] == "load": continue
-                pipe.load(params)
+                if pipe_conf["name"] == "intrinsic": 
+                    pipe.load()
+                else: 
+                    pipe.load(params)
 
         cv.destroyAllWindows()
 

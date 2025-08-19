@@ -296,14 +296,13 @@ class Undistorcer(Pipe):
                 ret, frame = cap.read()
                 if not ret:
                     break
-                # frame_undistort = cv.undistort(
-                #    frame,
-                #    cam.intrinsic,
-                #    cam.distortion,
-                #    None,
-                #    newCameraMatrix=new_intrinsic,
-                #)
-                frame_undistort = frame
+                frame_undistort = cv.undistort(
+                    frame,
+                    cam.intrinsic,
+                    cam.distortion,
+                    None,
+                    newCameraMatrix=new_intrinsic,
+                )
                 if visualization:
                     frame_to_plot = cv.resize(
                         frame_undistort, dsize=(0, 0), fx=0.5, fy=0.5
