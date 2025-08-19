@@ -39,3 +39,9 @@ pipeline:
     params: {
       visualization: True
     }
+  - name: ball_rotation
+    type: execute
+    params: {
+      save_path: "resources/videos/spinning",
+      visualization: True
+    }

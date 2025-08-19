@@ -249,7 +249,6 @@ class Ball_Trajectory_2D:
             to_plot = np.array(to_plot, dtype=np.int32).reshape((-1, 1, 2))
             cv.polylines(image, [to_plot], isClosed=False, color=self.color, thickness=2)
 
-
 class Ball_Trajectory_3D:
     def __init__(
         self,
@@ -366,6 +365,7 @@ class Environment:
             "extrinsic": cal.ExtrinsicCalibration,
             "ball_tracker": loc.TrackBall,
             "ball_localization": loc.LocalizeBall,
+            "ball_rotation": loc.SpinBall
         }
 
         # Initialize the pipes with the given savename
