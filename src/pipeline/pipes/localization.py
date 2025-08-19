@@ -596,9 +596,18 @@ class  Ball_Tracker_YOLO(Ball_Tracker):
         video.capture.set(cv.CAP_PROP_POS_FRAMES, 0)
         tot_frames = int(video.capture.get(cv.CAP_PROP_FRAME_COUNT))
 
+        last_detected_centre = None
+        old_gray = None
         trajectory = Ball_Trajectory_2D(tot_frames)  # Store all centers
         last_box = None  # Last detected bounding box
         frame_idx = 0
+
+        # Optical flow parameters
+        lk_params = dict(
+            winSize=(15, 15),
+            maxLevel=2,
+            criteria=(cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
+        )
 
         while True:
             ret, frame = video.capture.read()
@@ -614,14 +623,14 @@ class  Ball_Tracker_YOLO(Ball_Tracker):
             else:
                 x1, y1, x2, y2 = last_box
                 cx, cy = (x1 + x2)//2, (y1 + y2)//2
-                w = int((x2 - x1) * 10)
-                h = int((y2 - y1) * 10)
+                w = int((x2 - x1) * 12.5)
+                h = int((y2 - y1) * 12.5)
                 x1_crop = max(cx - w//2, 0)
                 y1_crop = max(cy - h//2, 0)
                 x2_crop = min(cx + w//2, frame.shape[1])
                 y2_crop = min(cy + h//2, frame.shape[0])
                 yolo_frame = frame[y1_crop:y2_crop, x1_crop:x2_crop]
-                yolo_frame = cv.resize(yolo_frame, (320, 320))
+                yolo_frame = cv.resize(yolo_frame, (640, 640))
                 x1_offset, y1_offset = x1_crop, y1_crop
 
             # Run YOLO
@@ -674,34 +683,18 @@ class  Ball_Tracker_YOLO(Ball_Tracker):
                 last_box = [x1, y1, x2, y2]
 
                 trajectory.set_by_frame(np.array([cx, cy]), radius, frame_idx)
-            else:
-                trajectory.set_by_frame(None, None, frame_idx)
+            elif last_detected_centre is not None:
+                # Optical flow fallback
+                p1, st, err = cv.calcOpticalFlowPyrLK(old_gray, frame_gray, last_detected_centre, None, **lk_params)
+                if p1 is not None and st[0][0] == 1:
+                    a, b = p1[0][0].astype(int)
+                    last_detected_centre = p1.reshape(-1, 1, 2)
+                    old_gray = frame_gray.copy()
+                    trajectory.set_by_frame(np.array([a, b]), None, frame_idx)
 
             frame_idx += 1
 
-        trajectory.interpolate_all()
-
-        # --- Show final frame with all circles and radii ---
-        if visualization:
-            video.capture.set(cv.CAP_PROP_POS_FRAMES, 10)
-            _, final_frame = video.capture.read()
-
-            for idx in range(len(trajectory.image_points)):
-                center = trajectory.image_points[idx]
-                radius = trajectory.radiuses[idx]
-                if center is None or radius is None:
-                    continue  # skip initial None
-                cx, cy = map(int, center)
-                if radius < 0:
-                    radius = 0
-                cv.circle(final_frame, (cx, cy), int(radius), (0, 255, 0), 2)
-                cv.putText(final_frame, str(idx), (cx + 5, cy - 5),
-                           cv.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1)
-            cv.imshow("All Circles", final_frame)
-            while True:
-                if cv.waitKey(0) & 0xFF == ord('q'):
-                    break
-            cv.destroyWindow("All Circles")
+        trajectory.interpolate_radiuses() #linear interpolation of missing radiuses (not detected by optical flow)
 
         return trajectory
         
