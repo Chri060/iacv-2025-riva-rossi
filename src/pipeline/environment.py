@@ -6,6 +6,7 @@ import cv2 as cv
 import numpy as np
 from cv2.typing import MatLike
 from numpy.typing import NDArray
+from scipy.interpolate import Akima1DInterpolator
 
 from pipeline.pipe import Pipe
 
@@ -123,58 +124,132 @@ class Ball_Trajectory_2D:
         """
         return self.radiuses[start or self.start : end or self.end]
 
-    def interpolate_radiuses(self):
+    @staticmethod
+    def interpolate_array(arr, window=8, inverse_fit=False):
         """
-        Linear interpolation of missing radiuses.
-        - Interpolates between known values.
-        - Extrapolates forward using last two known values.
-        - Keeps leading None values untouched.
+        Interpolates/extrapolates None values in arr using linear fit over a sliding window.
+        Keeps initial None values untouched. Converts interpolated numbers to int.
+        :param arr: list of values (floats or None)
+        :param window: number of past points to consider for extrapolation
+        :param inverse_fit: if True, fit 1/y = a*x + b
         """
-        n = len(self.radiuses)
+        n = len(arr)
+        arr_interp = arr.copy()
 
-        for i in range(n):
-            if self.radiuses[i] is None:
-                # Find previous non-None
-                prev_index = i - 1
-                while prev_index >= 0 and self.radiuses[prev_index] is None:
-                    prev_index -= 1
+        # Find first non-None index
+        first_known = next((i for i, v in enumerate(arr) if v is not None), None)
 
-                # Find next non-None
-                next_index = i + 1
-                while next_index < n and self.radiuses[next_index] is None:
-                    next_index += 1
+        if first_known is None:
+            return arr_interp  # all None, nothing to do
 
-                if prev_index >= 0 and next_index < n:
-                    # Case 1: interpolate between prev and next
-                    prev_val = self.radiuses[prev_index]
-                    next_val = self.radiuses[next_index]
-                    self.radiuses[i] = prev_val + (next_val - prev_val) * (i - prev_index) / (next_index - prev_index)
+        # Only interpolate/extrapolate after first known value
+        for i in range(first_known + 1, n):
+            if arr_interp[i] is None:
+                # Collect last 'window' known points before i
+                known_indices = [j for j in range(max(first_known, i - window), i) if arr_interp[j] is not None]
+                if len(known_indices) >= 2:
+                    x_known = np.array(known_indices)
+                    y_known = np.array([arr_interp[j] for j in known_indices], dtype=float)
 
-                elif prev_index >= 1:
-                    # Case 2: extrapolate forward using slope
-                    diff = self.radiuses[prev_index] - self.radiuses[prev_index - 1]
-                    self.radiuses[i] = self.radiuses[prev_index] + diff
+                    if inverse_fit:
+                        y_inv = 1 / y_known
+                        coeffs = np.polyfit(x_known, y_inv, 1)
+                        arr_interp[i] = int(round(1 / np.polyval(coeffs, i)))
+                    else:
+                        coeffs = np.polyfit(x_known, y_known, 1)
+                        arr_interp[i] = int(round(np.polyval(coeffs, i)))
+                elif known_indices:
+                    arr_interp[i] = int(arr_interp[known_indices[-1]])
+                else:
+                    next_known = next((arr_interp[j] for j in range(i + 1, n) if arr_interp[j] is not None), None)
+                    if next_known is not None:
+                        arr_interp[i] = int(next_known)
 
-                elif prev_index == 0:
-                    # Only one previous number, just copy it forward
-                    self.radiuses[i] = self.radiuses[prev_index]
+        # Convert all known values after first_known to int
+        for i in range(first_known, n):
+            if arr_interp[i] is not None:
+                arr_interp[i] = int(arr_interp[i])
+
+        return arr_interp
+
+    def interpolate_centers_2d(self, window=8):
+        """
+        Interpolates missing 2D points (x, y) together using linear fit over a sliding window.
+        Keeps initial None points untouched and converts all interpolated points to int.
+        """
+        n = len(self.image_points)
+        interp_points = self.image_points.copy()
+
+        # Find first non-None point
+        first_known = next((i for i, p in enumerate(interp_points) if p is not None and all(v is not None for v in p)),
+                           None)
+        if first_known is None:
+            return  # all None, nothing to do
+
+        for i in range(first_known + 1, n):
+            if interp_points[i] is None or np.any(interp_points[i] == None):
+                # Collect last 'window' known points before i
+                known_indices = [j for j in range(max(first_known, i - window), i) if interp_points[j] is not None]
+                if len(known_indices) >= 2:
+                    t_known = np.array(known_indices)
+                    x_known = np.array([interp_points[j][0] for j in known_indices], dtype=float)
+                    y_known = np.array([interp_points[j][1] for j in known_indices], dtype=float)
+
+                    # Linear fit x(t) and y(t) together
+                    A = np.vstack([t_known, np.ones(len(t_known))]).T
+                    x_coeff = np.linalg.lstsq(A, x_known, rcond=None)[0]
+                    y_coeff = np.linalg.lstsq(A, y_known, rcond=None)[0]
+
+                    interp_points[i] = [int(round(np.dot([i, 1], x_coeff))),
+                                        int(round(np.dot([i, 1], y_coeff)))]
+                elif known_indices:
+                    interp_points[i] = [int(interp_points[known_indices[-1]][0]),
+                                        int(interp_points[known_indices[-1]][1])]
+                else:
+                    next_known = next((interp_points[j] for j in range(i + 1, n) if interp_points[j] is not None), None)
+                    if next_known is not None:
+                        interp_points[i] = [int(next_known[0]), int(next_known[1])]
+
+        # Convert all known points after first_known to int
+        for i in range(first_known, n):
+            if interp_points[i] is not None:
+                interp_points[i] = [int(interp_points[i][0]), int(interp_points[i][1])]
+
+        self.image_points = interp_points
+
+    def interpolate_all(self):
+        # Radiuses: inverse fit for perspective scaling
+        self.radiuses = self.interpolate_array(self.radiuses, window=10, inverse_fit=True)
+
+        # Centers: interpolate x and y together
+        self.interpolate_centers_2d(window=8)
 
     def plot_onto(self, image: MatLike) -> None:
         """
-        Plots the trajectory as a series of circles on an image
+        Plots the trajectory as a series of circles on an image.
+        Skips frames where coordinates are None or NaN.
         """
         to_plot = []
         for curr_frame, curr_pos in enumerate(self.image_points):
             curr_rad = self.radiuses[curr_frame]
-            if curr_pos[0] is not None:
-                curr_pos = (int(curr_pos[0]), int(curr_pos[1]))
-                if curr_rad is not  None:
-                    curr_rad = int(curr_rad)
-                    cv.circle(image, curr_pos, curr_rad, self.color, 1)
-                to_plot.append(curr_pos)
 
-        to_plot = np.array(to_plot, dtype=np.int32).reshape((-1, 1, 2))
-        cv.polylines(image, to_plot, isClosed=False, color=self.color, thickness=100)
+            # Skip if coordinates are None or NaN
+            if curr_pos[0] is None or curr_pos[1] is None:
+                continue
+            if np.isnan(curr_pos[0]) or np.isnan(curr_pos[1]):
+                continue
+
+            cx, cy = map(int, curr_pos)
+
+            # Draw circle if radius is valid
+            if curr_rad is not None and not np.isnan(curr_rad):
+                cv.circle(image, (cx, cy), int(curr_rad), self.color, 1)
+
+            to_plot.append((cx, cy))
+
+        if to_plot:
+            to_plot = np.array(to_plot, dtype=np.int32).reshape((-1, 1, 2))
+            cv.polylines(image, [to_plot], isClosed=False, color=self.color, thickness=2)
 
 
 class Ball_Trajectory_3D:
@@ -286,12 +361,12 @@ class Environment:
         import pipeline.pipes.video_processing as vp
 
         pipes: dict[str, Pipe] = {
-            "intrinsic": cal.Intrinsic_Calibration,
+            "intrinsic": cal.IntrinsicCalibration,
             "video_synchronization": vp.Synchronizer,
             "video_stabilization": vp.Stabilizer,
             "video_undistortion": vp.Undistorcer,
             "lane_detection": loc.Lane_Detector,
-            "extrinsic": cal.Extrinsic_Calibration,
+            "extrinsic": cal.ExtrinsicCalibration,
             "ball_tracker_hough": loc.Ball_Tracker_Hough,
             "ball_tracker_yolo": loc.Ball_Tracker_YOLO,
             "ball_localization": loc.Ball_Localization,
@@ -312,6 +387,7 @@ class Environment:
             if proc_type == "execute":
                 pipe.execute(params)
             elif proc_type == "load":
+                if pipe_conf["name"] == "intrinsic" and pipe_conf["type"] == "load": continue
                 pipe.load(params)
 
         cv.destroyAllWindows()
