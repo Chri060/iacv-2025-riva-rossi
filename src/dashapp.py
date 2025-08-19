@@ -40,9 +40,9 @@ if __name__ == "__main__":
 
     pipes: dict[str, Pipe] = {
         "intrinsic": cal.IntrinsicCalibration,
-        "video_synchronization": vp.Synchronizer,
+        "video_synchronization": vp.SynchronizeVideo,
         "video_stabilization": vp.Stabilizer,
-        "video_undistortion": vp.Undistorcer,
+        "video_undistortion": vp.UndistortVideo,
         "lane_detection": loc.LaneDetector,
         "extrinsic": cal.ExtrinsicCalibration,
         "ball_tracker": loc.Ball_Tracker,

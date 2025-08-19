@@ -362,9 +362,8 @@ class Environment:
 
         pipes: dict[str, Pipe] = {
             "intrinsic": cal.IntrinsicCalibration,
-            "video_synchronization": vp.Synchronizer,
-            "video_stabilization": vp.Stabilizer,
-            "video_undistortion": vp.Undistorcer,
+            "video_synchronization": vp.SynchronizeVideo,
+            "video_undistortion": vp.UndistortVideo,
             "lane_detection": loc.Lane_Detector,
             "extrinsic": cal.ExtrinsicCalibration,
             "ball_tracker_hough": loc.Ball_Tracker_Hough,
