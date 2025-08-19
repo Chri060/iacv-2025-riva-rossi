@@ -1,12 +1,10 @@
 import glob, os, random
-
 import cv2 as cv
 import numpy as np
 import plotly.graph_objects as go
 from cv2.typing import MatLike
 from dash import dcc, html
 from typing import Tuple, cast
-
 import pipeline.plot_utils as plot_utils
 from pipeline.environment import DataManager, Environment
 from pipeline.pipe import Pipe

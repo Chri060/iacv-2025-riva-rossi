@@ -1,7 +1,6 @@
-import warnings, scipy
+import warnings, scipy, librosa
 import cv2 as cv
 import dash_player as dp
-import librosa
 import numpy as np
 from dash import html
 from pipeline.environment import Environment, Video

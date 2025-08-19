@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from matplotlib.axes import Axes
 
-from pipeline.environment import Camera, Ball_Trajectory_3D
+from pipeline.environment import Camera, BallTrajectory3d
 
 
 def plot_regression(
@@ -174,7 +174,7 @@ def camera(ax : Axes, camera : Camera, lcolor : str = None):
     )
 
 
-def trajectory(ax : Axes, trajectory : Ball_Trajectory_3D):
+def trajectory(ax : Axes, trajectory : BallTrajectory3d):
     coords = trajectory.get_coords()
     x = coords[:, 0]
     y = coords[:, 1]

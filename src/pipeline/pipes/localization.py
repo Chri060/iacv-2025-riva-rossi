@@ -1,5 +1,3 @@
-import math
-
 from ultralytics import YOLO
 import cv2 as cv
 import dash_player as dp
@@ -10,9 +8,8 @@ from dash import dcc, html
 from scipy.interpolate import make_smoothing_spline
 import matplotlib.pyplot as plt
 import pipeline.plot_utils as plot_utils
-from pipeline.environment import Ball_Trajectory_2D, Ball_Trajectory_3D, DataManager, Environment
+from pipeline.environment import BallTrajectory2d, BallTrajectory3d, DataManager, Environment
 from pipeline.pipe import Pipe
-from scipy.signal import savgol_filter
 
 class DetectLane(Pipe):
     """
@@ -281,7 +278,7 @@ class TrackBall(Pipe):
         return {self.__class__.__name__: page}
 
     @staticmethod
-    def __track_ball(model, video, visualization) -> Ball_Trajectory_2D:
+    def __track_ball(model, video, visualization) -> BallTrajectory2d:
         """
         Tracks the ball in a video using YOLO, returning a 2D trajectory.
         """
@@ -291,7 +288,7 @@ class TrackBall(Pipe):
         tot_frames = int(video.capture.get(cv.CAP_PROP_FRAME_COUNT))
 
         # Initialize trajectory object for storing ball positions per frame
-        trajectory = Ball_Trajectory_2D(tot_frames)
+        trajectory = BallTrajectory2d(tot_frames)
 
         last_box = None
         frame_idx = 0
@@ -455,7 +452,7 @@ class LocalizeBall(Pipe):
         points_3d = np.array([spl_x(t), spl_y(t), spl_z(t)]).T.reshape(-1, 3)
 
         # Store the 3D trajectory in a Ball_Trajectory_3D object
-        trajectory_3d = Ball_Trajectory_3D(views[0].trajectory.n_frames)
+        trajectory_3d = BallTrajectory3d(views[0].trajectory.n_frames)
         start_3d = start + start_over
         end_3d = start + end_over
         for i, frame in enumerate(range(start_3d, end_3d)):
@@ -554,7 +551,6 @@ class LocalizeBall(Pipe):
         page = html.Div(children=graph)
 
         return {self.__class__.__name__: page}
-
 
 class SpinBall(Pipe):
     """
