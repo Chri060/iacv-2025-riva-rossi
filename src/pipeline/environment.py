@@ -3,9 +3,6 @@ import cv2 as cv
 import numpy as np
 from cv2.typing import MatLike
 from numpy.typing import NDArray
-import pipeline.pipes.calibration as cal
-import pipeline.pipes.localization as loc
-import pipeline.pipes.video_processing as vp
 
 class Camera:
     """
@@ -526,6 +523,10 @@ class Environment:
         Args:
            pipeline_configs: List of dictionaries specifying pipe 'name', 'type', and optional 'params'.
         """
+
+        import pipeline.pipes.calibration as cal
+        import pipeline.pipes.localization as loc
+        import pipeline.pipes.video_processing as vp
 
         # Map pipe names to classes
         pipes: dict = {

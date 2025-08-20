@@ -1,3 +1,5 @@
+import random
+
 from ultralytics import YOLO
 import cv2 as cv
 import dash_player as dp
@@ -101,8 +103,10 @@ class DetectLane(Pipe):
 
                 # Draw each corner point on the frame
                 for point in view.lane.corners:
-                    frame = cv.circle(frame, (int(point[0]), int(point[1])), 2, (255, 255, 255), 5)
-                    frame = cv.circle(frame, (int(point[0]), int(point[1])), 2, (0, 0, 0), 1)
+                    # Draw a larger red circle
+                    frame = cv.circle(frame, (int(point[0]), int(point[1])), 6, (0, 0, 255), -1)  # Red filled circle
+                    # Optional: black border
+                    frame = cv.circle(frame, (int(point[0]), int(point[1])), 6, (0, 0, 0), 1)
 
                 frames.append(frame)
 
@@ -446,7 +450,7 @@ class LocalizeBall(Pipe):
 
         # Visualize
         if visualization:
-            plot_utils.plot_3d_spline_interpolation(t, points_3d[:, 0], points_3d[:, 1], points_3d[:, 2], spl_x(t), spl_y(t), spl_z(t))
+           plot_utils.plot_3d_spline_interpolation(t, points_3d[:, 0], points_3d[:, 1], points_3d[:, 2], spl_x(t), spl_y(t), spl_z(t))
 
         # Update points_3d with smoothed coordinates
         points_3d = np.array([spl_x(t), spl_y(t), spl_z(t)]).T.reshape(-1, 3)
@@ -461,6 +465,32 @@ class LocalizeBall(Pipe):
         # Save the trajectory
         Environment.set("3D_trajectory", trajectory_3d)
         DataManager.save(trajectory_3d, self.save_name)
+
+        if visualization:
+            import matplotlib.pyplot as plt
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.set_title("Ball Localization : 3D Visualization")
+
+            # Plot lane and trajectory
+            plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
+            plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
+
+            # Define views: (elev, azim)
+            views = {
+                "front": (20, 0),
+                "back": (20, 180),
+                "top": (90, -90),
+                "lateral": (0, 90)
+            }
+
+            for name, (elev, azim) in views.items():
+                ax.view_init(elev=elev, azim=azim)
+                plt.savefig(f"ball_trajectory_{name}.png")
+                print(f"Saved {name} view as ball_trajectory_{name}.png")
+
+            plt.show()
 
     def load(self, params: dict):
         return
@@ -560,7 +590,8 @@ class SpinBall(Pipe):
 
     def execute(self, params: dict):
         """
-        Estimates ball spin using optical flow on the tracked ball regions and plots 2D rotation axis.
+        Estimates ball spin using weighted optical flow on tracked ball regions
+        and plots 2D rotation axis.
         """
 
         # Visualization flag
@@ -572,14 +603,16 @@ class SpinBall(Pipe):
         smoothing_alpha = 0.2
         max_corners = 50
 
-        lk_params = dict(winSize=(15, 15), maxLevel=2, criteria=(cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
+        lk_params = dict(
+            winSize=(15, 15),
+            maxLevel=2,
+            criteria=(cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03)
+        )
 
         spin_results = {}
         axis_points = {}
 
-        # Process each camera view
         for view in Environment.get_views():
-            print(f"Estimating spin for {view.camera.name}...")
             cap = view.video.capture
             fps, _, _ = view.video.get_video_properties()
             trajectory = view.trajectory
@@ -608,10 +641,10 @@ class SpinBall(Pipe):
                         cv.circle(vis_frame, (cx, cy), radius, (0, 0, 255), 2)
                         cv.circle(vis_frame, (cx, cy), 3, (0, 0, 255), -1)
 
+                    # Mask ball area for feature tracking
                     mask_ball = np.zeros_like(frame_gray)
                     cv.circle(mask_ball, (cx, cy), max(radius - 2, 1), 255, -1)
-                    p_new = cv.goodFeaturesToTrack(frame_gray, mask=mask_ball, maxCorners=max_corners,
-                                                   qualityLevel=0.01, minDistance=5)
+                    p_new = cv.goodFeaturesToTrack(frame_gray, mask=mask_ball, maxCorners=max_corners, qualityLevel=0.01, minDistance=5)
 
                     if p0 is not None and len(p0) > 0:
                         p1, st, _ = cv.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
@@ -631,7 +664,6 @@ class SpinBall(Pipe):
                                 old_disp = np.array(filtered_old) - np.array([cx, cy])
                                 new_disp = np.array(filtered_new) - np.array([cx, cy])
                                 flow_vectors = new_disp - old_disp
-
                                 avg_flow = np.mean(flow_vectors, axis=0)
 
                                 axis_dir = np.array([-avg_flow[1], avg_flow[0]])
@@ -641,34 +673,39 @@ class SpinBall(Pipe):
                                 else:
                                     axis_dir = np.array([0, 0])
 
-                                # Make axis longer
-                                half_length  = int(radius * 2)  # 2 times the ball radius
+                                half_length = int(radius * 2)
                                 axis_start = np.array([cx, cy]) - axis_dir * half_length
                                 axis_end = np.array([cx, cy]) + axis_dir * half_length
-
                                 axis_points[view.camera.name].append((axis_start.ravel(), axis_end.ravel()))
 
                                 if visualization:
-                                    # Thicker, more visible line
-                                    cv.line(vis_frame, tuple(axis_start.astype(int)), tuple(axis_end.astype(int)),
-                                            (0, 255, 255), 4)
+                                    cv.line(vis_frame, tuple(axis_start.astype(int)), tuple(axis_end.astype(int)), (0, 255, 255), 4)
                                     cv.circle(vis_frame, tuple(axis_start.astype(int)), 5, (255, 0, 0), -1)
                                     cv.circle(vis_frame, tuple(axis_end.astype(int)), 5, (0, 255, 0), -1)
                             else:
                                 axis_points[view.camera.name].append((np.array([cx, cy]), np.array([cx, cy])))
 
-                            # --- Angular displacement / spin ---
+                            # --- Weighted angular displacement / spin ---
                             dthetas = []
+                            weights = []
                             for (new, old) in zip(filtered_new, filtered_old):
                                 dx_old, dy_old = old.ravel() - [cx, cy]
                                 dx_new, dy_new = new.ravel() - [cx, cy]
+                                r_old = np.sqrt(dx_old ** 2 + dy_old ** 2)
+
+                                # Ignore points too close to center
+                                if r_old < 0.3 * radius:
+                                    continue
+
                                 angle_old = np.arctan2(dy_old, dx_old)
                                 angle_new = np.arctan2(dy_new, dx_new)
                                 dtheta = (angle_new - angle_old + np.pi) % (2 * np.pi) - np.pi
+
                                 dthetas.append(dtheta)
+                                weights.append(r_old / radius)
 
                             if dthetas:
-                                med_dtheta = np.median(dthetas)
+                                med_dtheta = np.average(dthetas, weights=weights)
                                 spin_rate = med_dtheta * fps
                                 prev_spin = spin_rates[-1] if spin_rates else 0.0
                                 if len(spin_rates) > 0 and abs(spin_rate - prev_spin) > 20:
@@ -705,6 +742,7 @@ class SpinBall(Pipe):
                         frame_to_plot = cv.resize(vis_frame, dsize=(0, 0), fx=0.6, fy=0.6)
                         cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
                         cv.waitKey(1)
+
                 else:
                     spin_rates.append(spin_rates[-1] if spin_rates else 0.0)
 
@@ -717,34 +755,19 @@ class SpinBall(Pipe):
         Environment.set("spin_rates", spin_results)
         Environment.set("axis_points", axis_points)
 
-
-        def filter_spin_hump(spins):
-            spins = np.asarray(spins)
-            n = len(spins)
-            if n < 3:
-                return spins
-            peak_idx = np.argmax(spins)
-            filtered = spins[:peak_idx + 1]
-            for i in range(peak_idx + 1, n):
-                if spins[i] <= filtered[-1]:
-                    filtered = np.append(filtered, spins[i])
-                else:
-                    break
-            return filtered
-
         plt.figure(figsize=(10, 6))
         for cam_name, spins in spin_results.items():
             spins_rps = spins / (2 * np.pi)
-            spins_filtered = filter_spin_hump(spins_rps)
             window = 5
-            spins_smooth = np.convolve(spins_filtered, np.ones(window) / window, mode='same')
-            plt.plot(abs(spins_smooth), label=f"{cam_name} spin (rev/s)")
+            spins_smooth = np.convolve(spins_rps, np.ones(window) / window, mode='same')
+            plt.plot(abs(spins_smooth), label=f"{cam_name}")
 
         plt.xlabel("Frame")
         plt.ylabel("Spin rate (rev/s)")
         plt.title("Ball Spin Rate Over Time")
         plt.legend()
         plt.grid(True)
+        plt.savefig("spin_rate_over_time.png", dpi=300, bbox_inches="tight")
         plt.show()
 
     def load(self, params: dict):
