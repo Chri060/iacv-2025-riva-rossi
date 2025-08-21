@@ -31,6 +31,12 @@ class DetectLane(Pipe):
                            during manual point selection (default: [0.7, 0.7]).
         """
 
+        # Save path
+        try:
+            save_path = params["save_path"]
+        except Exception as _:
+            raise Exception("Missing required parameter : save_path")
+
         # Scale factor
         try:
             scales = params.get("scale", [0.7, 0.7])
@@ -52,7 +58,7 @@ class DetectLane(Pipe):
             ret, frame = capture.read()
 
             # Manually select lane corner points on the chosen frame
-            view.lane.corners = np.array(self.__manual_point_selection(frame, scale=scales[i]))
+            view.lane.corners = np.array(self.__manual_point_selection(frame, save_path, view.camera.name , scale=scales[i]))
 
             # Reset video capture to the first frame
             capture.set(cv.CAP_PROP_POS_FRAMES, 0)
@@ -63,7 +69,7 @@ class DetectLane(Pipe):
         # Save results
         DataManager.save(detection_results, self.save_name)
 
-        input("\n\033[92mPress Enter to continue...\033[0m")
+        input("\033[92mPress Enter to continue...\033[0m")
 
     def load(self, params: dict):
         """
@@ -122,7 +128,7 @@ class DetectLane(Pipe):
         input("\033[92mPress Enter to continue...\033[0m")
 
     @staticmethod
-    def __manual_point_selection(image: MatLike, scale: float = 0.5):
+    def __manual_point_selection(image: MatLike, save_path, camera_name, scale: float = 0.5):
         """
         Allows the user to manually select points on an image using mouse clicks.
         Points are scaled back to original image coordinates and returned as a list.
@@ -139,31 +145,35 @@ class DetectLane(Pipe):
         selected_points = []
         upscale = 1 / scale
 
-        # Mouse callback to handle point selection
+        # Make a copy for display
+        display_image = cv.resize(image.copy(), None, fx=scale, fy=scale)
+
         def select_point(event, x, y, flags, param):
             if event == cv.EVENT_LBUTTONDOWN:
-                # Draw a small red dot where the user clicks
-                cv.circle(image, (x, y), 3, (0, 0, 255), -1)
-                cv.imshow(Environment.CV_VISUALIZATION_NAME, image)
+                # Draw on the scaled display image
+                cv.circle(display_image, (x, y), 3, (0, 0, 255), -1)
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, display_image)
 
-                # Rescale coordinates back to the original image size
-                x = x * upscale
-                y = y * upscale
-                selected_points.append([x, y])
+                # Append coordinates scaled back to original
+                selected_points.append([x * upscale, y * upscale])
 
-        # Scale down the frame for easier manual selection
-        image = cv.resize(image, None, fx=scale, fy=scale)
-
-        # Show the image
-        cv.imshow(Environment.CV_VISUALIZATION_NAME, image)
-
-        # Set the mouse callback to capture clicks
+        cv.imshow(Environment.CV_VISUALIZATION_NAME, display_image)
         cv.setMouseCallback(Environment.CV_VISUALIZATION_NAME, select_point)
 
-        # Wait until the user presses Enter (key code 13)
+        # Wait for Enter
         key = cv.waitKey(0) & 0xFF
-        if key == 13:
+        if key == 13 and selected_points:
+            # Draw selected points on the original full-size image
+            for pt in selected_points:
+                cv.circle(image, (int(pt[0]), int(pt[1])), 15, (0, 0, 255), -1)
+
+            final_save_path = f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_names[0].removesuffix('.mp4')}.png"
+            cv.imwrite(final_save_path, image)
+            cv.destroyAllWindows()
             return selected_points
+
+        cv.destroyAllWindows()
+        return None
 
     @staticmethod
     def plotly_page() -> None:
@@ -194,14 +204,13 @@ class TrackBall(Pipe):
 
         tracking_results = []
 
-
         # Load the YOLO model for ball detection
         model = YOLO("./resources/models/yolov8l.pt")
 
         # Iterate over all camera views defined in the Environment
         for view in Environment.get_views():
             # Track the ball in the current view and store its trajectory
-            view.trajectory = self.__track_ball(model, view.video, visualization)
+            view.trajectory = self.__track_ball(model, view.video, visualization, save_path, view.camera.name)
             tracking_results.append({"name": view.camera.name, "trajectory": view.trajectory})
 
         # Save the results
@@ -286,34 +295,44 @@ class TrackBall(Pipe):
         return {self.__class__.__name__: page}
 
     @staticmethod
-    def __track_ball(model, video, visualization) -> BallTrajectory2d:
+    def __track_ball(model, video, visualization, save_path, camera_name) -> BallTrajectory2d:
         """
-        Tracks the ball in a video using YOLO, returning a 2D trajectory.
+        Tracks the ball in a video using YOLO, returning a 2D trajectory and saving a video of the tracking.
         """
 
         # Reset video to the first frame
         video.capture.set(cv.CAP_PROP_POS_FRAMES, 0)
         tot_frames = int(video.capture.get(cv.CAP_PROP_FRAME_COUNT))
+        width = int(video.capture.get(cv.CAP_PROP_FRAME_WIDTH))
+        height = int(video.capture.get(cv.CAP_PROP_FRAME_HEIGHT))
+        fps = video.capture.get(cv.CAP_PROP_FPS)
 
-        # Initialize trajectory object for storing ball positions per frame
+        # Initialize trajectory object
         trajectory = BallTrajectory2d(tot_frames)
+
+        # Initialize video writer if save_path is provided
+        out_video = None
+        if save_path:
+            out_path = f"{save_path.replace("images", "videos")}/{camera_name}/{Environment.save_name}_{Environment.video_names[0]}"
+            out_video = cv.VideoWriter(out_path, cv.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
 
         last_box = None
         frame_idx = 0
+        first_frame = None
 
         while True:
-            # Read the next frame
             ret, frame = video.capture.read()
             if not ret:
                 break
 
-            # Crop around last detection for faster YOLO processing
+            if first_frame is None:
+                first_frame = frame.copy()
+
+            # Crop around last detection
             if last_box is None:
-                # No previous detection, use full frame
                 yolo_frame = frame
                 x1_offset, y1_offset = 0, 0
             else:
-                # Use last detected bounding box to crop region of interest
                 x1, y1, x2, y2 = last_box
                 cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
                 w, h = int((x2 - x1) * 10), int((y2 - y1) * 10)
@@ -321,42 +340,39 @@ class TrackBall(Pipe):
                 y1_crop = max(cy - h // 2, 0)
                 x2_crop = min(cx + w // 2, frame.shape[1])
                 y2_crop = min(cy + h // 2, frame.shape[0])
-
-                # Resize cropped region to YOLO input size
                 yolo_frame = cv.resize(frame[y1_crop:y2_crop, x1_crop:x2_crop], (320, 320))
                 x1_offset, y1_offset = x1_crop, y1_crop
 
-            # Run YOLO on the current frame or crop
+            # YOLO detection
             results = model(yolo_frame, conf=0.05, classes=[32], augment=True)[0]
 
             ball_boxes = []
-
-            # Process YOLO detection results
             for cls, box in zip(results.boxes.cls, results.boxes.xyxy):
                 if last_box is not None:
-                    # Rescale coordinates from cropped frame back to original full frame
-                    # Rescale box coordinates back to full frame
                     scale_x = (x2_crop - x1_crop) / yolo_frame.shape[1]
                     scale_y = (y2_crop - y1_crop) / yolo_frame.shape[0]
                     x1b, y1b, x2b, y2b = box
-                    ball_boxes.append([int(x1b * scale_x + x1_offset), int(y1b * scale_y + y1_offset), int(x2b * scale_x + x1_offset), int(y2b * scale_y + y1_offset)])
+                    ball_boxes.append([int(x1b * scale_x + x1_offset), int(y1b * scale_y + y1_offset),
+                                       int(x2b * scale_x + x1_offset), int(y2b * scale_y + y1_offset)])
                 else:
-                    # Full-frame detection, use original coordinates
                     ball_boxes.append(list(map(int, box)))
 
-            # Visualize
+            # Visualization
+            vis_frame = frame.copy()
             if visualization:
-                vis_frame = frame.copy()
                 for b in ball_boxes:
                     cv.rectangle(vis_frame, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), 2)
                 trajectory.plot_onto(vis_frame)
-                frame_to_plot = cv.resize(vis_frame, dsize=(0, 0), fx=0.6, fy=0.6)
-                frame_to_plot = cv.putText(frame_to_plot, str(frame_idx), (5, 30),
+                frame_to_plot = cv.putText(vis_frame.copy(), str(frame_idx), (5, 30),
                                            cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1, cv.LINE_AA)
-                cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
+                cv.imshow(Environment.CV_VISUALIZATION_NAME, cv.resize(frame_to_plot, (0, 0), fx=0.6, fy=0.6))
                 cv.waitKey(2)
 
-            # Update trajectory with detected ball position
+            # Write frame to output video
+            if out_video is not None:
+                out_video.write(vis_frame)
+
+            # Update trajectory
             if ball_boxes:
                 x1, y1, x2, y2 = ball_boxes[0]
                 cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
@@ -364,13 +380,20 @@ class TrackBall(Pipe):
                 trajectory.set_by_frame(np.array([cx, cy]), radius, frame_idx)
                 last_box = [x1, y1, x2, y2]
             else:
-                # No ball detected in this frame
                 trajectory.set_by_frame(None, None, frame_idx)
 
             frame_idx += 1
 
-        # Interpolate missing trajectory points (frames without detection)
         trajectory.interpolate_all()
+
+        # Save trajectory image
+        if save_path and first_frame is not None:
+            full_traj_frame = first_frame.copy()
+            trajectory.plot_onto(full_traj_frame)
+            cv.imwrite(f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_names[0]}.png", full_traj_frame)
+
+        if out_video is not None:
+            out_video.release()
 
         return trajectory
 
@@ -387,7 +410,13 @@ class LocalizeBall(Pipe):
             params (dict): Parameters dict. Can include 'visualization' to enable 3D plotting.
         """
 
-        # Get the visualization flag from params or default to environment setting
+        # Save path
+        try:
+            save_path = params["save_path"]
+        except Exception as _:
+            raise Exception("Missing required parameter : save_path")
+
+        # Visualization
         try:
             visualization = params.get("visualization", False)
         except Exception as _:
@@ -452,10 +481,6 @@ class LocalizeBall(Pipe):
         spl_y = make_smoothing_spline(t, y2, lam=lam)
         spl_z = make_smoothing_spline(t, y3, lam=lam)
 
-        # Visualize
-        if visualization:
-           plot_utils.plot_3d_spline_interpolation(t, points_3d[:, 0], points_3d[:, 1], points_3d[:, 2], spl_x(t), spl_y(t), spl_z(t))
-
         # Update points_3d with smoothed coordinates
         points_3d = np.array([spl_x(t), spl_y(t), spl_z(t)]).T.reshape(-1, 3)
 
@@ -470,29 +495,30 @@ class LocalizeBall(Pipe):
         Environment.set("3D_trajectory", trajectory_3d)
         DataManager.save(trajectory_3d, self.save_name)
 
-        if visualization:
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.set_title("Ball Localization : 3D Visualization")
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_title("Ball Localization : 3D Visualization")
 
-            # Plot lane and trajectory
-            plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
-            plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
+        # Plot lane and trajectory
+        plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
+        plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
 
-            # Define views: (elev, azim)
-            views = {
-                "front": (20, 0),
-                "back": (20, 180),
-                "top": (90, -90),
-                "lateral": (0, 90)
-            }
+        # Define views: (elev, azim)
+        views = {
 
-            for name, (elev, azim) in views.items():
-                ax.view_init(elev=elev, azim=azim)
-                plt.savefig(f"ball_trajectory_{name}.png")
-                print(f"Saved {name} view as ball_trajectory_{name}.png")
+            "back": (20, 180),
+            "top": (90, -90),
+            "side": (0, 90),
+            "front": (20, 0),
+        }
 
-            plt.show()
+        for name, (elev, azim) in views.items():
+            ax.view_init(elev=elev, azim=azim)
+            plt.savefig(f"{save_path}/traj_{name}_{Environment.video_names[0].removesuffix(".mp4")}.png")
+
+        plt.show()
+
+        input("\033[92mPress Enter to continue...\033[0m")
 
     def load(self, params: dict):
         trajectory_3d = DataManager.load(self.save_name)
