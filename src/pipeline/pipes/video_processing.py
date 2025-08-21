@@ -363,7 +363,7 @@ class UndistortVideo(Pipe):
             view.video = Video(output_path)
             cam.intrinsic = new_intrinsic
 
-            input("\033[92mPress Enter to continue...\033[0m")
+        input("\033[92mPress Enter to continue...\033[0m")
 
     @staticmethod
     def load(params: dict):

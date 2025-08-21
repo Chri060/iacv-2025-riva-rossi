@@ -1,7 +1,7 @@
 # To be used during development
 save_name: dev
 global:
-  video_names: ["video8.mp4", "video8.mp4"]
+  video_names: ["video0.mp4", "video0.mp4"]
   camera_names: ["nothing_2a", "iphone"]
   paths:
     originals: "resources/videos/originals"
@@ -10,7 +10,7 @@ global:
   visualization: True
 pipeline:
   - name: intrinsic
-    type: execute
+    type: load
     params: {
       images_path : "resources/calibration",
     }

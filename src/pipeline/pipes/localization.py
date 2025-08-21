@@ -216,6 +216,8 @@ class TrackBall(Pipe):
         # Save the results
         DataManager.save(tracking_results, self.save_name)
 
+        input("\033[92mPress Enter to continue...\033[0m")
+
     def load(self, params: dict):
         """
         Loads previously tracked ball trajectories from storage and optionally visualizes them.
@@ -514,7 +516,7 @@ class LocalizeBall(Pipe):
 
         for name, (elev, azim) in views.items():
             ax.view_init(elev=elev, azim=azim)
-            plt.savefig(f"{save_path}/traj_{name}_{Environment.video_names[0].removesuffix(".mp4")}.png")
+            plt.savefig(f"{save_path}/{Environment.save_name}_{name}_{Environment.video_names[0].removesuffix(".mp4")}.png")
 
         plt.show()
 
