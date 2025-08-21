@@ -661,50 +661,52 @@ class SpinBall(Pipe):
                                     filtered_new.append(new)
                                     filtered_old.append(old)
 
-                            # --- Compute 2D rotation axis ---
-                            if len(filtered_new) > 0:
-                                old_disp = np.array(filtered_old) - np.array([cx, cy])
-                                new_disp = np.array(filtered_new) - np.array([cx, cy])
-                                flow_vectors = new_disp - old_disp
-                                avg_flow = np.mean(flow_vectors, axis=0)
+                            trajectory_3d = Environment.get("3D_trajectory")
 
-                                axis_dir = np.array([-avg_flow[1], avg_flow[0]])
-                                norm = np.linalg.norm(axis_dir)
-                                if norm > 1e-6:
-                                    axis_dir /= norm
-                                else:
-                                    axis_dir = np.array([0, 0])
-
-                                half_length = int(radius * 2)
-                                axis_start = np.array([cx, cy]) - axis_dir * half_length
-                                axis_end = np.array([cx, cy]) + axis_dir * half_length
-                                axis_points[view.camera.name].append((axis_start.ravel(), axis_end.ravel()))
-
-                                if visualization:
-                                    cv.line(vis_frame, tuple(axis_start.astype(int)), tuple(axis_end.astype(int)), (0, 255, 255), 4)
-                                    cv.circle(vis_frame, tuple(axis_start.astype(int)), 5, (255, 0, 0), -1)
-                                    cv.circle(vis_frame, tuple(axis_end.astype(int)), 5, (0, 255, 0), -1)
-                            else:
-                                axis_points[view.camera.name].append((np.array([cx, cy]), np.array([cx, cy])))
-
-                            # --- Weighted angular displacement / spin ---
+                            # --- Compute 3D rotation axis & spin ---
+                            axes_3d = []
                             dthetas = []
                             weights = []
+
                             for (new, old) in zip(filtered_new, filtered_old):
+                                # Old & new displacement vectors in *image plane*
                                 dx_old, dy_old = old.ravel() - [cx, cy]
                                 dx_new, dy_new = new.ravel() - [cx, cy]
-                                r_old = np.sqrt(dx_old ** 2 + dy_old ** 2)
 
-                                # Ignore points too close to center
-                                if r_old < 0.3 * radius:
+                                r_old_len = np.sqrt(dx_old ** 2 + dy_old ** 2)
+                                if r_old_len < 0.3 * radius:
                                     continue
 
-                                angle_old = np.arctan2(dy_old, dx_old)
-                                angle_new = np.arctan2(dy_new, dx_new)
-                                dtheta = (angle_new - angle_old + np.pi) % (2 * np.pi) - np.pi
+                                # Normalize to sphere surface in 3D
+                                # Map 2D offsets into 3D local coords (z from sphere geometry)
+                                z_old = np.sqrt(max(radius ** 2 - r_old_len ** 2, 0.0))
+                                z_new = np.sqrt(max(radius ** 2 - (dx_new ** 2 + dy_new ** 2), 0.0))
 
-                                dthetas.append(dtheta)
-                                weights.append(r_old / radius)
+                                r_old = np.array([dx_old, dy_old, z_old])
+                                r_new = np.array([dx_new, dy_new, z_new])
+
+                                # Rotation axis from cross product
+                                axis_vec = np.cross(r_old, r_new)
+                                if np.linalg.norm(axis_vec) > 1e-6:
+                                    axis_vec /= np.linalg.norm(axis_vec)
+                                    axes_3d.append(axis_vec)
+
+                                # Rotation angle from dot product
+                                dot = np.dot(r_old, r_new) / (np.linalg.norm(r_old) * np.linalg.norm(r_new))
+                                dot = np.clip(dot, -1.0, 1.0)
+                                theta = np.arccos(dot)
+
+                                dthetas.append(theta)
+                                weights.append(r_old_len / radius)
+
+                            if dthetas:
+                                avg_axis = np.mean(axes_3d, axis=0) if axes_3d else np.array([0, 0, 1])
+                                avg_axis /= np.linalg.norm(avg_axis)
+                            else:
+                                avg_axis = np.array([0, 0, 1])
+
+                            # Save 3D axis instead of 2D line endpoints
+                            axis_points[view.camera.name].append(avg_axis)
 
                             if dthetas:
                                 med_dtheta = np.average(dthetas, weights=weights)
@@ -770,6 +772,51 @@ class SpinBall(Pipe):
         plt.legend()
         plt.grid(True)
         plt.savefig("spin_rate_over_time.png", dpi=300, bbox_inches="tight")
+        plt.show()
+
+        from mpl_toolkits.mplot3d import Axes3D
+
+        fig = plt.figure(figsize=(8, 8))
+        ax = fig.add_subplot(111, projection='3d')
+
+        # --- Known real ball radius (in same units as trajectory_3d) ---
+        R_ball = 0.11  # meters (example: bowling ball ~11 cm radius)
+
+        # --- Find the first valid center ---
+        valid_centers = [c for c in trajectory_3d.coords if c[0] is not None]
+        if not valid_centers:
+            raise ValueError("No valid 3D coordinates found in trajectory.")
+
+        center0 = valid_centers[0]
+
+        # --- Draw reference sphere at the first valid center ---
+        u = np.linspace(0, 2 * np.pi, 50)
+        v = np.linspace(0, np.pi, 50)
+        x = center0[0] + R_ball * np.outer(np.cos(u), np.sin(v))
+        y = center0[1] + R_ball * np.outer(np.sin(u), np.sin(v))
+        z = center0[2] + R_ball * np.outer(np.ones_like(u), np.cos(v))
+        ax.plot_surface(x, y, z, color='lightblue', alpha=0.3, linewidth=0)
+
+        # --- Plot all predicted axes ---
+        L = R_ball * 2  # axis length scaling
+        for frame_idx, (center, axis_vec) in enumerate(zip(trajectory_3d.coords, axis_points[view.camera.name])):
+            if center[0] is None:
+                continue  # skip missing centers
+            if axis_vec is None or np.linalg.norm(axis_vec) < 1e-6:
+                continue
+            axis_vec = axis_vec / np.linalg.norm(axis_vec)
+            start = center - axis_vec * L
+            end = center + axis_vec * L
+            ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]],
+                    color='red', alpha=0.3)
+
+        # --- Formatting ---
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+        ax.set_title("3D Ball Spin Axes Over Time")
+        ax.set_box_aspect([1, 1, 1])  # equal aspect ratio
+
         plt.show()
 
     def load(self, params: dict):
