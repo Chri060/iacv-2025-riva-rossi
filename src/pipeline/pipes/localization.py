@@ -493,6 +493,8 @@ class LocalizeBall(Pipe):
             plt.show()
 
     def load(self, params: dict):
+        trajectory_3d = DataManager.load(self.save_name)
+        Environment.set("3D_trajectory", trajectory_3d)
         return
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
