@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 from cv2.typing import MatLike
 from dash import dcc, html
 from typing import Tuple, cast
+from matplotlib import pyplot as plt
+
 import pipeline.plot_utils as plot_utils
 from pipeline.environment import DataManager, Environment
 from pipeline.pipe import Pipe
@@ -15,6 +17,21 @@ class IntrinsicCalibration(Pipe):
     of a checkerboard pattern. The calibration estimates the intrinsic parameters
     (camera matrix) and distortion coefficients for each camera defined in Environment.
     """
+
+    def show_results(self):
+        cal_results = DataManager.load(self.save_name)
+
+        for res in cal_results:
+            print(f"\033[96m>>>>> Camera: {res['camera_name']}\033[0m")
+            print("Intrinsic matrix:")
+            for row in res['intrinsic']:
+                print("  " + "  ".join(f"{val:10.4f}" for val in row))
+
+            print("Distortion coefficients:")
+            print("  " + "  ".join(f"{val:10.6f}" for val in res['distortion'][0]))
+            print("")
+
+        input("\033[92mPress Enter to continue...\033[0m")
 
     @staticmethod
     def __process_params(params: dict):
@@ -69,7 +86,7 @@ class IntrinsicCalibration(Pipe):
 
             # Find all images (*.jpg) for this camera
             images = glob.glob(os.path.join(images_path, camera_name, "*.jpg"))
-            print(f"Calibrating {camera_name} ...")
+            print(f"Calibrating {camera_name}...")
 
             # Process calibration images
             if images:
@@ -118,7 +135,7 @@ class IntrinsicCalibration(Pipe):
 
                     capture.release()
 
-            print(f"Checkerboard matched : {len(image_points)}")
+            print(f"Checkerboard matched: {len(image_points)}\n")
 
             # Run calibration
             if len(object_points) > 0 and img_shape is not None:
@@ -131,6 +148,8 @@ class IntrinsicCalibration(Pipe):
                 calibration_results.append({"camera_name": camera_name, "intrinsic": mtx, "distortion": dist})
             else:
                 raise Exception("No valid checkerboard detections. Calibration failed.")
+
+        self.show_results()
 
         # Save results
         DataManager.save(calibration_results, self.save_name)
@@ -174,11 +193,14 @@ class IntrinsicCalibration(Pipe):
         """
         Load calibration results from storage and apply them to Environment views.
         """
+
         cal_results = DataManager.load(self.save_name)
         for res in cal_results:
             view = Environment.get(res["camera_name"])
             view.camera.intrinsic = res["intrinsic"]
             view.camera.distortion = res["distortion"]
+
+        self.show_results()
 
 class ExtrinsicCalibration(Pipe):
     """
@@ -194,6 +216,12 @@ class ExtrinsicCalibration(Pipe):
         - Updates Environment cameras
         - Optionally visualizes the results
         """
+
+        # Save path
+        try:
+            save_path = params["save_path"]
+        except Exception as _:
+            raise Exception("Missing required parameter : save_path")
 
         # Visualization flag
         try:
@@ -247,6 +275,41 @@ class ExtrinsicCalibration(Pipe):
         # Save the results
         DataManager.save(ext_calibration_results, self.save_name)
 
+        ax = plot_utils.get_3d_plot("Camera placement : 3D Visualization")
+
+        # Draw bowling lane
+        plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
+
+        # Draw world reference axes
+        plot_utils.reference_frame(
+            ax,
+            [0, 0, 0],
+            [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+            label="World reference frame",
+            lcolor="cyan"
+        )
+
+        # Draw cameras in 3D space
+        for view in Environment.get_views():
+            plot_utils.camera(ax, view.camera)
+
+        # Define views: (elev, azim)
+        views = {
+            "front": (20, 0),
+            "back": (20, 180),
+            "top": (90, -90),
+            "side": (0, 90)
+        }
+
+        # Save each view without showing
+        for name, (elev, azim) in views.items():
+            ax.view_init(elev=elev, azim=azim)
+            plt.savefig(f"{save_path}/{Environment.save_name}_{name}_{Environment.video_names[0].removesuffix(".mp4")}.png")
+
+        plt.close(ax.figure)
+
+        input("\033[92mPress Enter to continue...\033[0m")
+
     def load(self, params: dict):
         """
         Loads extrinsic calibration results from storage,
@@ -271,6 +334,8 @@ class ExtrinsicCalibration(Pipe):
         # Visualization
         if visualization:
             self.visualize()
+
+        input("\033[92mPress Enter to continue...\033[0m")
 
     @staticmethod
     def visualize():

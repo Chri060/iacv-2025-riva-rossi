@@ -1,4 +1,5 @@
-import os, pickle, random
+import os, pickle, random, re
+
 import cv2 as cv
 import numpy as np
 from cv2.typing import MatLike
@@ -549,7 +550,8 @@ class Environment:
             pipe = pipes[pipe_conf["name"]]
             params: dict = pipe_conf.get("params", None)
             proc_type: str = pipe_conf["type"]
-            print(f"\n>>>>> {pipe.__class__.__name__} | {proc_type} <<<<<\n       params : {params}\n")
+            class_name_spaced = re.sub(r"(?<!^)(?=[A-Z])", " ", pipe.__class__.__name__)
+            print(f"\n\033[94m>>>>> {class_name_spaced} | {proc_type} <<<<<\033[0m\n       params : {params}\n")
             if proc_type == "execute":
                 pipe.execute(params)
             elif proc_type == "load":

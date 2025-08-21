@@ -1,5 +1,3 @@
-import random
-
 from ultralytics import YOLO
 import cv2 as cv
 import dash_player as dp
@@ -65,6 +63,8 @@ class DetectLane(Pipe):
         # Save results
         DataManager.save(detection_results, self.save_name)
 
+        input("\n\033[92mPress Enter to continue...\033[0m")
+
     def load(self, params: dict):
         """
         Loads previously detected lane corner points and optionally visualizes them.
@@ -118,6 +118,8 @@ class DetectLane(Pipe):
             frame_to_plot = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
             cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
             cv.waitKey(2000)
+
+        input("\033[92mPress Enter to continue...\033[0m")
 
     @staticmethod
     def __manual_point_selection(image: MatLike, scale: float = 0.5):
@@ -247,6 +249,8 @@ class TrackBall(Pipe):
                 cv.waitKey(1)
             cap1.set(cv.CAP_PROP_POS_FRAMES, 0)
             cap2.set(cv.CAP_PROP_POS_FRAMES, 0)
+
+        input("\033[92mPress Enter to continue...\033[0m")
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
         """
@@ -467,8 +471,6 @@ class LocalizeBall(Pipe):
         DataManager.save(trajectory_3d, self.save_name)
 
         if visualization:
-            import matplotlib.pyplot as plt
-
             fig = plt.figure()
             ax = fig.add_subplot(111, projection='3d')
             ax.set_title("Ball Localization : 3D Visualization")
@@ -495,6 +497,19 @@ class LocalizeBall(Pipe):
     def load(self, params: dict):
         trajectory_3d = DataManager.load(self.save_name)
         Environment.set("3D_trajectory", trajectory_3d)
+        # Get the visualization flag from params or default to environment setting
+        try:
+            visualization = params.get("visualization", False)
+        except Exception as _:
+            visualization = Environment.visualization
+
+        if visualization:
+            ax = plot_utils.get_3d_plot("Ball Localization : 3D Visualization")
+            plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
+            plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
+            plot_utils.show()
+
+        input("\033[92mPress Enter to continue...\033[0m")
         return
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
@@ -755,7 +770,8 @@ class SpinBall(Pipe):
             spin_results[view.camera.name] = np.array(spin_rates, dtype=np.float32)
             cap.set(cv.CAP_PROP_POS_FRAMES, 0)
 
-        DataManager.save(spin_results, self.save_name)
+
+        DataManager.save({"spin_results": spin_results, "axis_points": axis_points}, self.save_name)
         Environment.set("spin_rates", spin_results)
         Environment.set("axis_points", axis_points)
 
@@ -773,8 +789,6 @@ class SpinBall(Pipe):
         plt.grid(True)
         plt.savefig("spin_rate_over_time.png", dpi=300, bbox_inches="tight")
         plt.show()
-
-        from mpl_toolkits.mplot3d import Axes3D
 
         fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(111, projection='3d')
@@ -819,14 +833,28 @@ class SpinBall(Pipe):
 
         plt.show()
 
-    def load(self, params: dict):
+    def load(self, params: dict = None):
         """
         Load previously saved spin data.
 
         Args:
-            params (dict): Dictionary that may contain the 'visualization' flag
+            params (dict, optional): Dictionary that may contain flags, e.g., 'visualization' (bool)
+
+        Returns:
+            dict: A dictionary with 'spin_results' and 'axis_points'
         """
-        return
+
+        data = DataManager.load(self.save_name)
+        spin_results = data.get("spin_results")
+        axis_points = data.get("axis_points")
+
+        if spin_results is None or axis_points is None:
+            raise ValueError(f"No valid spin_results or axis_points found in {self.save_name}")
+
+        Environment.set("spin_rates", spin_results)
+        Environment.set("axis_points", axis_points)
+
+        input("\033[92mPress Enter to continue...\033[0m")
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
         return

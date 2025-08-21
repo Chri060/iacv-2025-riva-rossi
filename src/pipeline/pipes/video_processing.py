@@ -79,6 +79,8 @@ class SynchronizeVideo(Pipe):
         view1.video = Video(output1_path)
         view2.video = Video(output2_path)
 
+        input("\n\033[92mPress Enter to continue...\033[0m")
+
     @staticmethod
     def load(params: dict):
         """
@@ -127,6 +129,8 @@ class SynchronizeVideo(Pipe):
         # Load the videos into the view objects
         view1.video = Video(output1_path)
         view2.video = Video(output2_path)
+
+        input("\033[92mPress Enter to continue...\033[0m")
 
     @staticmethod
     def __get_time_shift(video1_path: str, video2_path: str) -> float:
@@ -359,6 +363,8 @@ class UndistortVideo(Pipe):
             view.video = Video(output_path)
             cam.intrinsic = new_intrinsic
 
+            input("\033[92mPress Enter to continue...\033[0m")
+
     @staticmethod
     def load(params: dict):
         """
@@ -408,6 +414,8 @@ class UndistortVideo(Pipe):
                 frame_to_plot = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
                 cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
                 cv.waitKey(1)
+
+        input("\033[92mPress Enter to continue...\033[0m")
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
         """

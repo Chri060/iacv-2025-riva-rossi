@@ -27,7 +27,10 @@ pipeline:
   - name: lane_detection
     type: load
   - name: extrinsic
-    type: load
+    type: execute
+    params: {
+      save_path: "resources/graphs/extrinsic"
+    }
   - name: ball_tracker
     type: load
     params: {
@@ -40,7 +43,7 @@ pipeline:
       visualization: True
     }
   - name: ball_rotation
-    type: execute
+    type: load
     params: {
       save_path: "resources/videos/spinning",
       visualization: True
