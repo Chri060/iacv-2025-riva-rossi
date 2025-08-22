@@ -5,6 +5,7 @@ import numpy as np
 from cv2.typing import MatLike
 from numpy.typing import NDArray
 
+
 class Camera:
     """
     Class to store camera parameters and metadata.
@@ -31,6 +32,7 @@ class Camera:
         """
 
         return f"""---------------------------------------------\nCamera : {self.name}:\n> Intrinsic:\n{self.intrinsic}\n> Distortion:\n{self.distortion}\n> Position:\n{self.position}\n> Rotation:\n{self.rotation}\n---------------------------------------------"""
+
 
 class Video:
     """
@@ -74,6 +76,7 @@ class Video:
 
         return fps, duration, (width, height)
 
+
 class Lane:
     """
     Class to represent a lane in an image or video frame.
@@ -91,13 +94,15 @@ class Lane:
 
         self.corners: NDArray | None = corners
 
+
 class BallTrajectory2d:
     """
     Represents the 2D trajectory of a ball across video frames.
     Stores image coordinates and radius for each frame and allows interpolation and retrieval of trajectory data.
     """
 
-    def __init__(self, n_frames: int, fps: float | None = None, image_points: NDArray | None = None, radii: NDArray | None = None, start: int | None = None, end: int | None = None):
+    def __init__(self, n_frames: int, fps: float | None = None, image_points: NDArray | None = None,
+                 radii: NDArray | None = None, start: int | None = None, end: int | None = None):
         """
         Initializes the BallTrajectory2d object.
 
@@ -141,7 +146,6 @@ class BallTrajectory2d:
         self.image_points[curr_frame] = coord
         self.radii[curr_frame] = r
 
-
         # Update start and end frames
         if self.start is None:
             self.start = curr_frame
@@ -178,7 +182,7 @@ class BallTrajectory2d:
             NDArray: Array of coordinates in the specified range.
         """
 
-        return self.image_points[start or self.start : end or self.end]
+        return self.image_points[start or self.start: end or self.end]
 
     def get_radii(self, start: int | None = None, end: int | None = None) -> NDArray:
         """
@@ -346,12 +350,14 @@ class BallTrajectory2d:
             to_plot = np.array(to_plot, dtype=np.int32).reshape((-1, 1, 2))
             cv.polylines(image, [to_plot], isClosed=False, color=self.color, thickness=2)
 
+
 class BallTrajectory3d:
     """
        Represents the 3D trajectory of a ball over a sequence of frames.
     """
 
-    def __init__(self, n_frames: int, fps: int | None = None, coords: NDArray | None = None, radius: int | None = None, start: int | None = None, end: int | None = None):
+    def __init__(self, n_frames: int, fps: int | None = None, coords: NDArray | None = None, radius: int | None = None,
+                 start: int | None = None, end: int | None = None):
         """
         Initializes a BallTrajectory3d instance.
 
@@ -378,7 +384,7 @@ class BallTrajectory3d:
         self.radius = radius
 
         # Assign a random color for visualization purposes
-        self.color = (random.randint(0, 255), random.randint(0, 255),random.randint(0, 255))
+        self.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
     def set_by_frame(self, coord: NDArray, curr_frame: int) -> None:
         """
@@ -440,12 +446,14 @@ class BallTrajectory3d:
         end = end or self.end
         return self.coords[start:end]
 
+
 class View:
     """
     Represents a single camera view of a video, optionally including lane information and a 2D ball trajectory.
     """
 
-    def __init__(self, camera: Camera, video: Video, lane: Lane | None = None, trajectory: BallTrajectory2d | None = None,):
+    def __init__(self, camera: Camera, video: Video, lane: Lane | None = None,
+                 trajectory: BallTrajectory2d | None = None, ):
         """
         Initializes a View instance.
 
@@ -460,6 +468,7 @@ class View:
         self.lane = lane or Lane()
         self.trajectory = trajectory
 
+
 class Environment:
     """
     A global environment manager for handling videos, cameras, and pipelines.
@@ -467,6 +476,7 @@ class Environment:
     Provides static methods to initialize and access views and run processing pipelines.
     """
 
+    coords = {}
     visualization = None
     CV_VISUALIZATION_NAME = "OpenCV Visualization"
     video_name: str = ""
@@ -536,7 +546,6 @@ class Environment:
         from pipeline.pipes.video_synchronization import SynchronizeVideo
         from pipeline.pipes.video_undistortion import UndistortVideo
 
-
         # Map pipe names to classes
         pipes: dict = {
             "intrinsic": IntrinsicCalibration,
@@ -563,15 +572,15 @@ class Environment:
             if proc_type == "execute":
                 pipe.execute(params)
             elif proc_type == "load":
-                if pipe_conf["name"] == "intrinsic": 
+                if pipe_conf["name"] == "intrinsic":
                     pipe.load()
-                else: 
+                else:
                     pipe.load(params)
 
         cv.destroyAllWindows()
 
     @staticmethod
-    def get(name: str) -> object:
+    def get(name: str):
         """
         Retrieves an object stored in the environment.
 
@@ -620,6 +629,7 @@ class Environment:
 
         return [Environment.get(name) for name in Environment.camera_names]
 
+
 class DataManager:
     """
     A simple utility class for saving, loading, and deleting Python objects
@@ -641,7 +651,8 @@ class DataManager:
             with open(f"{DataManager.save_path}/{save_name}.pkl", "wb") as out:
                 pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
         else:
-            with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl", "wb") as out:
+            with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl",
+                      "wb") as out:
                 pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
@@ -665,8 +676,8 @@ class DataManager:
                     obj = pickle.load(inp)
                     return obj
             else:
-                print(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl")
-                with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl", "rb") as inp:
+                with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl",
+                          "rb") as inp:
                     obj = pickle.load(inp)
                     return obj
         except FileNotFoundError:

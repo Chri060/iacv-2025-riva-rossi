@@ -1,3 +1,5 @@
+from typing import cast
+
 import cv2 as cv
 import numpy as np
 import plotly.graph_objects as go
@@ -8,6 +10,7 @@ import pipeline.plot_utils as plot_utils
 from pipeline.environment import BallTrajectory3d, DataManager, Environment
 from pipeline.pipe import Pipe
 
+
 class LocalizeBall(Pipe):
     """
     Class to localize a bowling ball in 3D space using stereo camera views.
@@ -16,24 +19,10 @@ class LocalizeBall(Pipe):
     def execute(self, params: dict):
         """
         Main execution method that computes the 3D trajectory of the ball.
-
-        Args:
-            params (dict): Parameters dict. Can include 'visualization' to enable 3D plotting.
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-
-        # Visualization
-        try:
-            visualization = params.get("visualization", False)
-        except Exception as _:
-            visualization = Environment.visualization
-
-        # Retrieve the two camera views from the environment
+        save_path = params["save_path"]
+        visualization = params.get("visualization", False)
         views = Environment.get_views()
 
         # Compute the projection matrices for both cameras
@@ -82,6 +71,16 @@ class LocalizeBall(Pipe):
 
         points_3d = points_3d[start_over:end_over]
 
+        # Smooth the 3D trajectory using spline interpolation
+        t = np.arange(0, len(points_3d), 1)
+
+        spl_x = make_smoothing_spline(t, points_3d[:, 0], lam=100)
+        spl_y = make_smoothing_spline(t, points_3d[:, 1], lam=100)
+        z = np.full_like(spl_x(t), params.get("ball_radius", 0.1091))  # same shape as spl_x(t)
+
+        # Update points_3d with smoothed coordinates
+        points_3d = np.array([spl_x(t), spl_y(t), z]).T.reshape(-1, 3)
+
         # Store the 3D trajectory in a Ball_Trajectory_3D object
         trajectory_3d = BallTrajectory3d(views[0].trajectory.n_frames)
         start_3d = start + start_over
@@ -102,29 +101,24 @@ class LocalizeBall(Pipe):
         plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
 
         # Define views: (elev, azim)
-        views = {
-            "back": (20, 180),
-            "top": (90, -90),
-            "side": (0, 90),
-            "front": (20, 0),
-        }
+        views = {"back": (20, 180), "top": (90, -90), "side": (0, 90), "front": (20, 0)}
 
         for name, (elev, azim) in views.items():
             ax.view_init(elev=elev, azim=azim)
             plt.savefig(f"{save_path}/{Environment.save_name}_{name}_{Environment.video_name.removesuffix(".mp4")}.png")
-
-        plt.show()
+        if visualization:
+            plt.show()
+        else:
+            plt.close(fig)
 
         input("\033[92mPress Enter to continue...\033[0m")
 
     def load(self, params: dict):
         trajectory_3d = DataManager.load(self.save_name)
         Environment.set("3D_trajectory", trajectory_3d)
+
         # Get the visualization flag from params or default to environment setting
-        try:
-            visualization = params.get("visualization", False)
-        except Exception as _:
-            visualization = Environment.visualization
+        visualization = params.get("visualization", False)
 
         if visualization:
             ax = plot_utils.get_3d_plot("Ball Localization : 3D Visualization")
@@ -133,7 +127,6 @@ class LocalizeBall(Pipe):
             plot_utils.show()
 
         input("\033[92mPress Enter to continue...\033[0m")
-        return
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
         """
@@ -142,16 +135,15 @@ class LocalizeBall(Pipe):
         """
 
         # Load the previously saved 3D trajectory
-        trajectory_3d = DataManager.load(self.save_name)
+        trajectory_3d = cast(BallTrajectory3d, DataManager.load(self.save_name))
+        Environment.set("3D_trajectory", trajectory_3d)
 
         # Helper function to create a 3D sphere at a given center with a specified radius
-        def make_sphere(center, radius, resolution=10):
-            x, y, z = center
-            u, v = np.mgrid[0 : 2 * np.pi : resolution * 2j, 0 : np.pi : resolution * 1j]
-            X = radius * np.cos(u) * np.sin(v) + x
-            Y = radius * np.sin(u) * np.sin(v) + y
-            Z = radius * np.cos(v) + z
-            return go.Surface(x=X, y=Y, z=Z, opacity=0.6)
+        def make_sphere(center, ball_radius, resolution=10):
+            u, v = np.mgrid[0: 2 * np.pi: resolution * 2j, 0: np.pi: resolution * 1j]
+            return go.Surface(x=ball_radius * np.cos(u) * np.sin(v) + center[0],
+                              y=ball_radius * np.sin(u) * np.sin(v) + center[1], z=ball_radius * np.cos(v) + center[2],
+                              opacity=0.6)
 
         # Extract trajectory coordinates
         xyz_t = trajectory_3d.get_coords()
@@ -166,7 +158,7 @@ class LocalizeBall(Pipe):
         z = lane_pos[:, 2]
 
         # Radius of the bowling ball (in meters)
-        r = 0.108
+        radius = params.get("radius", 0.1091)
 
         # Construct the figure
         lane = go.Figure(
@@ -204,14 +196,14 @@ class LocalizeBall(Pipe):
                                         "frame": {"duration": 0, "redraw": False},
                                         "mode": "immediate",
                                     },
-                                ],  # Stops animation
+                                ],
                             },
                         ],
                     }
                 ],
                 title="Bowling Lane",
             ),
-            frames=[go.Frame(data=make_sphere(pos, r)) for pos in xyz_t],
+            frames=[go.Frame(data=make_sphere(pos, radius)) for pos in xyz_t],
         )
 
         lane.update_scenes(aspectmode="data")

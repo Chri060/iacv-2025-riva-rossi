@@ -2,22 +2,23 @@
 save_name: dev
 global:
   video_name: "video6.mp4"
-  camera_names: ["nothing", "iphone"]
+  camera_names: [ "nothing", "iphone" ]
   paths:
     originals: "resources/videos/originals"
   coords:
-    world_lane: [[0, 0, 0], [19, 0, 0], [19, -1.07, 0], [0, -1.07, 0]]
+    world_lane: [ [ 0, 0, 0 ], [ 19, 0, 0 ], [ 19, -1.07, 0 ], [ 0, -1.07, 0 ] ]
+  ball_radius: 0.1091
   visualization: True
 pipeline:
   - name: intrinsic
     type: load
     params: {
-      images_path : "resources/calibration"
+      images_path: "resources/calibration"
     }
   - name: video_synchronization
     type: load
     params: {
-      save_path : "resources/videos/sync"
+      save_path: "resources/videos/sync"
     }
   - name: video_undistortion
     type: load
@@ -40,7 +41,7 @@ pipeline:
       save_path: "resources/images/tracking"
     }
   - name: ball_localization
-    type: execute
+    type: load
     params: {
       save_path: "resources/graphs/trajectory"
     }

@@ -4,8 +4,7 @@ class Pipe:
     """
     Base class for all pipeline steps.
 
-    Each subclass of Pipe represents a processing unit in the workflow,
-    such as calibration, undistortion, feature extraction, etc.
+    Each subclass of Pipe represents a processing unit in the workflow.
     A Pipe defines three main responsibilities:
     - `execute`: Run the main functionality (process data, save results).
     - `load`: Reload previously computed results into the Environment.
@@ -13,7 +12,6 @@ class Pipe:
 
     Attributes:
         save_name (str): Unique name used when saving results.
-                         Defaults to "<ClassName>_save".
     """
 
     def __init__(self, save_name: str | None = None):
