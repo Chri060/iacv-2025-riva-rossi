@@ -1,3 +1,5 @@
+from typing import cast
+
 import cv2 as cv
 import numpy as np
 import plotly.graph_objects as go
@@ -7,6 +9,7 @@ from matplotlib import pyplot as plt
 import pipeline.plot_utils as plot_utils
 from pipeline.environment import DataManager, Environment
 from pipeline.pipe import Pipe
+
 
 class ExtrinsicCalibration(Pipe):
     """
@@ -49,7 +52,8 @@ class ExtrinsicCalibration(Pipe):
             intrinsic = np.array(view.camera.intrinsic)
 
             # Estimate rotation and translation using PnP
-            _, rotation_vector, translation_vector = cv.solvePnP(world_points, image_points, intrinsic, None, flags=cv.SOLVEPNP_ITERATIVE)
+            _, rotation_vector, translation_vector = cv.solvePnP(world_points, image_points, intrinsic, None,
+                                                                 flags=cv.SOLVEPNP_ITERATIVE)
 
             # Convert rotation vector to rotation matrix
             rotation_matrix, _ = cv.Rodrigues(rotation_vector)
@@ -59,7 +63,7 @@ class ExtrinsicCalibration(Pipe):
 
             # Set the height of the cameras to correct the planar scene inaccuracies
             camera_position[2] = 1.63
-            
+
             # Camera orientation (world-to-camera rotation)
             camera_orientation = rotation_matrix.T
 
@@ -72,7 +76,8 @@ class ExtrinsicCalibration(Pipe):
             view.camera.rotation = camera_orientation
 
             # Save results
-            ext_calibration_results.update({view.camera.name: {"extrinsic": extrinsic, "position": camera_position, "rotation": camera_orientation}})
+            ext_calibration_results.update({view.camera.name: {"extrinsic": extrinsic, "position": camera_position,
+                                                               "rotation": camera_orientation}})
 
         # Visualization
         if visualization:
@@ -128,7 +133,7 @@ class ExtrinsicCalibration(Pipe):
             visualization = Environment.visualization
 
         # Load saved calibration
-        ext_calibration_results = DataManager.load(self.save_name)
+        ext_calibration_results = cast(dict, DataManager.load(self.save_name))
 
         # Restore camera parameters
         for view in Environment.get_views():
@@ -143,30 +148,6 @@ class ExtrinsicCalibration(Pipe):
 
         input("\033[92mPress Enter to continue...\033[0m")
 
-    @staticmethod
-    def visualize():
-        """
-        Generates a 3D Matplotlib plot showing:
-        - Bowling lane
-        - World reference frame
-        - All calibrated cameras (position and orientation)
-        """
-
-        ax = plot_utils.get_3d_plot("Camera placement : 3D Visualization")
-
-        # Draw bowling lane
-        plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
-
-        # Draw world reference axes
-        plot_utils.reference_frame(ax, [0, 0, 0], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], label="World reference frame", lcolor="cyan")
-
-        # Draw cameras in 3D space
-        for view in Environment.get_views():
-            plot_utils.camera(ax, view.camera)
-
-        # Show plot
-        plot_utils.show()
-
     def plotly_page(self, _):
         """
         Creates a Plotly 3D visualization page:
@@ -175,12 +156,11 @@ class ExtrinsicCalibration(Pipe):
         - Pit highlighted in red
         """
 
-        ext_calibration_results = DataManager.load(self.save_name)
+        ext_calibration_results = cast(dict, DataManager.load(self.save_name))
 
         # Update Environment with loaded calibration
         views = Environment.get_views()
         for view in views:
-
             res = ext_calibration_results[view.camera.name]
             view.camera.extrinsic = res["extrinsic"]
             view.camera.position = res["position"]
@@ -204,8 +184,12 @@ class ExtrinsicCalibration(Pipe):
         lane = go.Figure(
             data=[
                 go.Mesh3d(x=x, y=y, z=z, color="lightblue", opacity=0.8, name="Bowling Lane"),
-                go.Cone(x=pos1[0], y=pos1[1], z=pos1[2], u=[rot1[0]], v=[rot1[1]], w=[rot1[2]], sizemode="absolute", sizeref=1, showscale=False, name=views[0].camera.name, colorscale=[[0, "red"], [1, "red"]], cmin=0, cmax=1),
-                go.Cone(x=pos2[0], y=pos2[1], z=pos2[2], u=[rot2[0]], v=[rot2[1]], w=[rot2[2]], sizemode="absolute", sizeref=1, showscale=False, name=views[1].camera.name, colorscale=[[0, "blue"], [1, "blue"]], cmin=0, cmax=1),
+                go.Cone(x=pos1[0], y=pos1[1], z=pos1[2], u=[rot1[0]], v=[rot1[1]], w=[rot1[2]], sizemode="absolute",
+                        sizeref=1, showscale=False, name=views[0].camera.name, colorscale=[[0, "red"], [1, "red"]],
+                        cmin=0, cmax=1),
+                go.Cone(x=pos2[0], y=pos2[1], z=pos2[2], u=[rot2[0]], v=[rot2[1]], w=[rot2[2]], sizemode="absolute",
+                        sizeref=1, showscale=False, name=views[1].camera.name, colorscale=[[0, "blue"], [1, "blue"]],
+                        cmin=0, cmax=1),
                 go.Scatter3d(x=x[1:3], y=y[1:3], z=z[1:3], mode="lines", name="Pit", line=dict(width=5, color="red"))
             ]
         )
@@ -221,3 +205,28 @@ class ExtrinsicCalibration(Pipe):
         page = html.Div(children=graph)
 
         return {self.__class__.__name__: page}
+
+    @staticmethod
+    def visualize():
+        """
+        Generates a 3D Matplotlib plot showing:
+        - Bowling lane
+        - World reference frame
+        - All calibrated cameras (position and orientation)
+        """
+
+        ax = plot_utils.get_3d_plot("Camera placement : 3D Visualization")
+
+        # Draw bowling lane
+        plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
+
+        # Draw world reference axes
+        plot_utils.reference_frame(ax, [0, 0, 0], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], label="World reference frame",
+                                   lcolor="cyan")
+
+        # Draw cameras in 3D space
+        for view in Environment.get_views():
+            plot_utils.camera(ax, view.camera)
+
+        # Show plot
+        plot_utils.show()

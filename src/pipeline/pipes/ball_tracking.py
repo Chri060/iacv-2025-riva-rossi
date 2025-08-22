@@ -1,3 +1,6 @@
+import collections
+from typing import cast
+
 from ultralytics import YOLO
 import cv2 as cv
 import dash_player as dp
@@ -5,6 +8,7 @@ import numpy as np
 from dash import html
 from pipeline.environment import BallTrajectory2d, DataManager, Environment
 from pipeline.pipe import Pipe
+
 
 class TrackBall(Pipe):
     """
@@ -17,17 +21,9 @@ class TrackBall(Pipe):
         Executes ball tracking using YOLO and saves the trajectories.
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-
-        # Visualization
-        try:
-            visualization = params.get("visualization", Environment.visualization)
-        except AttributeError as _:
-            visualization = Environment.visualization
+        # Load the variables
+        save_path = params["save_path"]
+        visualization = params.get("visualization", Environment.visualization)
 
         tracking_results = []
 
@@ -37,7 +33,7 @@ class TrackBall(Pipe):
         # Iterate over all camera views defined in the Environment
         for view in Environment.get_views():
             # Track the ball in the current view and store its trajectory
-            view.trajectory = self.__track_ball(model, view.video, visualization, save_path, view.camera.name)
+            view.trajectory = self.track_ball(model, view.video, visualization, save_path, view.camera.name)
             tracking_results.append({"name": view.camera.name, "trajectory": view.trajectory})
 
         # Save the results
@@ -47,7 +43,7 @@ class TrackBall(Pipe):
 
     def load(self, params: dict):
         """
-        Loads previously tracked ball trajectories from storage and optionally visualizes them.
+        Loads previously tracked ball trajectories from storage.
         """
 
         # Visualization
@@ -57,7 +53,7 @@ class TrackBall(Pipe):
             visualization = Environment.visualization
 
         # Load saved tracking results
-        tracking_results = DataManager.load(self.save_name)
+        tracking_results = cast(collections.Iterable, DataManager.load(self.save_name))
 
         captures, trajectories = [], []
 
@@ -80,7 +76,8 @@ class TrackBall(Pipe):
                     break
                 tr1.plot_onto(frame1)
                 tr2.plot_onto(frame2)
-                frame2_resized = cv.resize(frame2, (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])), frame1.shape[0]))
+                frame2_resized = cv.resize(frame2, (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])),
+                                                    frame1.shape[0]))
                 stacked_frame = np.hstack((frame1, frame2_resized))
                 frame_to_plot = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
                 cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
@@ -116,15 +113,15 @@ class TrackBall(Pipe):
         # Create HTML container for side-by-side layout
         page = html.Div(
             children=[
-                html.Div(children=dp1, style={"heigth": "auto", "width": "49%", "display": "inline-block"}),
-                html.Div(children=dp2, style={"heigth": "auto", "width": "49%", "display": "inline-block"})
+                html.Div(children=dp1, style={"height": "auto", "width": "49%", "display": "inline-block"}),
+                html.Div(children=dp2, style={"height": "auto", "width": "49%", "display": "inline-block"})
             ]
         )
 
         return {self.__class__.__name__: page}
 
     @staticmethod
-    def __track_ball(model, video, visualization, save_path, camera_name) -> BallTrajectory2d:
+    def track_ball(model, video, visualization, save_path, camera_name) -> BallTrajectory2d:
         """
         Tracks the ball in a video using YOLO, returning a 2D trajectory and saving a video of the tracking.
         """
@@ -139,7 +136,7 @@ class TrackBall(Pipe):
         # Initialize trajectory object
         trajectory = BallTrajectory2d(tot_frames)
 
-        # Initialize video writer if save_path is provided
+        # Initialize the video writer if save_path is provided
         out_video = None
         if save_path:
             out_path = f"{save_path.replace("images", "videos")}/{camera_name}/{Environment.save_name}_{Environment.video_name}"
@@ -148,6 +145,7 @@ class TrackBall(Pipe):
         last_box = None
         frame_idx = 0
         first_frame = None
+        x1_crop, y1_crop, x2_crop, y2_crop = 0, 0, 0, 0
 
         while True:
             ret, frame = video.capture.read()
@@ -219,7 +217,9 @@ class TrackBall(Pipe):
         if save_path and first_frame is not None:
             full_traj_frame = first_frame.copy()
             trajectory.plot_onto(full_traj_frame)
-            cv.imwrite(f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_name.removesuffix(".mp4")}.png", full_traj_frame)
+            cv.imwrite(
+                f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_name.removesuffix(".mp4")}.png",
+                full_traj_frame)
 
         if out_video is not None:
             out_video.release()

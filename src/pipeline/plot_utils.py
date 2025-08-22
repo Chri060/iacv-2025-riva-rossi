@@ -8,12 +8,12 @@ from pipeline.environment import Camera, BallTrajectory3d
 
 
 def plot_regression(
-    x: NDArray,
-    y_train: NDArray,
-    y_pred: NDArray,
-    title: str = "Regression",
-    xlabel: str = "X",
-    ylabel: str = "Y",
+        x: NDArray,
+        y_train: NDArray,
+        y_pred: NDArray,
+        title: str = "Regression",
+        xlabel: str = "X",
+        ylabel: str = "Y",
 ):
     plt.figure(title)
     plt.scatter(x, y_train)
@@ -25,14 +25,14 @@ def plot_regression(
 
 
 def plot_3d_spline_interpolation(
-    t: NDArray,
-    x: NDArray,
-    y: NDArray,
-    z: NDArray,
-    newx: NDArray,
-    newy: NDArray,
-    newz: NDArray,
-    name: str = "3D Spline Interpolation"
+        t: NDArray,
+        x: NDArray,
+        y: NDArray,
+        z: NDArray,
+        newx: NDArray,
+        newy: NDArray,
+        newz: NDArray,
+        name: str = "3D Spline Interpolation"
 ):
     f = plt.figure(name)
 
@@ -72,7 +72,7 @@ def plot_3d_spline_interpolation(
 
 
 def plot_2d_spline_interpolation(
-    t: NDArray, x: NDArray, y: NDArray, newx: NDArray, newy: NDArray, name : str = "2D Spline Interpolation"
+        t: NDArray, x: NDArray, y: NDArray, newx: NDArray, newy: NDArray, name: str = "2D Spline Interpolation"
 ):
     f = plt.figure(name)
 
@@ -119,7 +119,7 @@ def get_3d_plot(name: str = "3D Plot") -> Axes:
 
 
 # Plots a bowling lane
-def bowling_lane(ax: Axes, corners: NDArray, min_offset : float = 3, max_offset : float = 3):
+def bowling_lane(ax: Axes, corners: NDArray, min_offset: float = 3, max_offset: float = 3):
     min = np.min(corners[:, :]) - min_offset
     max = np.max(corners[:, :]) + max_offset
     set_limits(ax, min, max)
@@ -142,14 +142,14 @@ def bowling_lane(ax: Axes, corners: NDArray, min_offset : float = 3, max_offset 
 
 # Plots a reference frame in a given 3d axes
 def reference_frame(
-    ax: Axes,
-    pos: NDArray,
-    rot: NDArray,
-    colors: list[str] = ["r", "g", "b"],
-    names: list[str] = ["x", "y", "z"],
-    length: int = 1,
-    label: str = None,
-    lcolor: str = None,
+        ax: Axes,
+        pos: list[int],
+        rot: list[list[int]],
+        colors: list[str] = ["r", "g", "b"],
+        names: list[str] = ["x", "y", "z"],
+        length: int = 1,
+        label: str = None,
+        lcolor: str = None,
 ):
     if lcolor is None:
         lcolor = np.random.rand(
@@ -168,13 +168,13 @@ def reference_frame(
 
 
 # Plots a camera in a given 3d axes
-def camera(ax : Axes, camera : Camera, lcolor : str = None):
+def camera(ax: Axes, camera: Camera, lcolor: str = None):
     reference_frame(
         ax, camera.position, camera.rotation, length=3, label=camera.name, lcolor=lcolor
     )
 
 
-def trajectory(ax : Axes, trajectory : BallTrajectory3d):
+def trajectory(ax: Axes, trajectory: BallTrajectory3d):
     coords = trajectory.get_coords()
     x = coords[:, 0]
     y = coords[:, 1]
@@ -183,14 +183,14 @@ def trajectory(ax : Axes, trajectory : BallTrajectory3d):
 
 
 # Sets the limits of a 3D axes
-def set_limits(ax : Axes, min : float, max: float):
+def set_limits(ax: Axes, min: float, max: float):
     ax.set_xlim(min, max)
     ax.set_ylim(min, max)
     ax.set_zlim(min, max)
 
 
 # Sets the view angle
-def view_angle(ax : Axes, elev : float, azim : float):
+def view_angle(ax: Axes, elev: float, azim: float):
     ax.view_init(elev=elev, azim=azim)
 
 

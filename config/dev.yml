@@ -36,7 +36,7 @@ pipeline:
       save_path: "resources/graphs/extrinsic"
     }
   - name: ball_tracker
-    type: load
+    type: execute
     params: {
       save_path: "resources/images/tracking"
     }

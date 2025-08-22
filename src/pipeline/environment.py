@@ -131,7 +131,7 @@ class BallTrajectory2d:
         # Assign a random color for visualization
         self.color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
-    def set_by_frame(self, coord: NDArray, r: float, curr_frame: int) -> None:
+    def set_by_frame(self, coord: NDArray | None, r: float | None, curr_frame: int) -> None:
         """
         Set the ball's position and radius for a specific frame.
 
