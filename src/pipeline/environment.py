@@ -665,6 +665,7 @@ class DataManager:
                     obj = pickle.load(inp)
                     return obj
             else:
+                print(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl")
                 with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl", "rb") as inp:
                     obj = pickle.load(inp)
                     return obj

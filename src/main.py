@@ -3,22 +3,13 @@ from pipeline.environment import Environment
 
 def main():
     """
-    Main entry point for running a pipeline.
-
-    This script:
-    1. Loads a configuration file (YAML format).
-    2. Initializes global settings in the Environment.
-    3. Starts the pipeline defined in the configuration.
-
-    Usage:
-        python main.py [config_path]
-
-    If no config_path is provided, defaults to './config/dev.yml'.
+    Main entry point for running the pipeline.
+    This script loads a configuration file, initializes global settings in the Environment, and starts the pipeline defined in the configuration.
     """
 
-    # Select the configuration file:
+    # Select the configuration file
     if len(sys.argv) == 1:
-        # If no argument is provided, use the default dev config
+        # If no argument is provided, use the default development config
         config_path = "./config/dev.yml"
     else:
         # Use the path passed as the first command-line argument

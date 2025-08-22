@@ -2,7 +2,16 @@ import os, sys, dash, yaml
 from dash import Dash, Input, Output, html
 from flask import send_from_directory
 from pipeline.environment import Environment
+from pipeline.pipes.intrinsic_calibration import IntrinsicCalibration
+from pipeline.pipes.extrinsic_calibration import ExtrinsicCalibration
+from pipeline.pipes.lane_detection import DetectLane
+from pipeline.pipes.ball_tracking import TrackBall
+from pipeline.pipes.ball_localization import LocalizeBall
+from pipeline.pipes.ball_motion import SpinBall
+from pipeline.pipes.video_synchronization import SynchronizeVideo
+from pipeline.pipes.video_undistortion import UndistortVideo
 
+# Define the static directory path for resources
 STATIC_DIR = f"{os.getcwd()}/resources"
 
 # Initialize Dash app
@@ -14,11 +23,13 @@ def serve_video(video_path):
     video_folder = f"{STATIC_DIR}/videos"
     return send_from_directory(video_folder, video_path, mimetype="video/mp4")
 
-if __name__ == "__main__":
-
+def main():
+    """
+    This module creates an interactive Dash web application that provides visualization.
+    """
     # Determine config the file path from command-line argument or default
     if len(sys.argv) == 1:
-        config_path = "./config/default.yml"
+        config_path = "./config/dev.yml"
     else:
         config_path = sys.argv[1]
 
@@ -29,19 +40,10 @@ if __name__ == "__main__":
     print(f"Loading Dashboard for : {os.path.basename(config_path)}")
 
     # Initialize global environment variables
-    Environment.initialize_globals(configs["savename"], configs["global"])
+    Environment.initialize_globals(configs["save_name"], configs["global"])
     pipe_configs: list[dict] = configs["pipeline"]
 
-    from pipeline.pipes.intrinsic_calibration import IntrinsicCalibration
-    from pipeline.pipes.extrinsic_calibration import ExtrinsicCalibration
-    from pipeline.pipes.lane_detection import DetectLane
-    from pipeline.pipes.ball_tracking import TrackBall
-    from pipeline.pipes.ball_localization import LocalizeBall
-    from pipeline.pipes.ball_motion import SpinBall
-    from pipeline.pipes.video_synchronization import SynchronizeVideo
-    from pipeline.pipes.video_undistortion import UndistortVideo
-
-    # Map pipe names to classes
+    # Map pipe names to classes for dynamic instantiation
     pipes: dict = {
         "intrinsic": IntrinsicCalibration,
         "video_synchronization": SynchronizeVideo,
@@ -53,7 +55,7 @@ if __name__ == "__main__":
         "ball_rotation": SpinBall
     }
 
-    # Initialize pipeline modules
+    # Initialize the pipeline modules
     print("Initializing Pipes :")
     for key in pipes.keys():
         pipes.update({key: pipes.get(key)(Environment.save_name)})
@@ -105,3 +107,6 @@ if __name__ == "__main__":
 
     # Run the Dash server
     app.run(debug=False)
+
+if __name__ == "__main__":
+    main()

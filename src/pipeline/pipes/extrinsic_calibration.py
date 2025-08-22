@@ -167,7 +167,7 @@ class ExtrinsicCalibration(Pipe):
         # Show plot
         plot_utils.show()
 
-    def plotly_page(self):
+    def plotly_page(self, _):
         """
         Creates a Plotly 3D visualization page:
         - Bowling lane mesh
@@ -180,6 +180,7 @@ class ExtrinsicCalibration(Pipe):
         # Update Environment with loaded calibration
         views = Environment.get_views()
         for view in views:
+
             res = ext_calibration_results[view.camera.name]
             view.camera.extrinsic = res["extrinsic"]
             view.camera.position = res["position"]

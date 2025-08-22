@@ -169,5 +169,5 @@ class DetectLane(Pipe):
         return None
 
     @staticmethod
-    def plotly_page() -> None:
+    def plotly_page(self) -> None:
         return None
