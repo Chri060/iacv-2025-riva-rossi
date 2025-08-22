@@ -525,20 +525,26 @@ class Environment:
            pipeline_configs: List of dictionaries specifying pipe 'name', 'type', and optional 'params'.
         """
 
-        import pipeline.pipes.calibration as cal
-        import pipeline.pipes.localization as loc
-        import pipeline.pipes.video_processing as vp
+        from pipeline.pipes.intrinsic_calibration import IntrinsicCalibration
+        from pipeline.pipes.extrinsic_calibration import ExtrinsicCalibration
+        from pipeline.pipes.lane_detection import DetectLane
+        from pipeline.pipes.ball_tracking import TrackBall
+        from pipeline.pipes.ball_localization import LocalizeBall
+        from pipeline.pipes.ball_motion import SpinBall
+        from pipeline.pipes.video_synchronization import SynchronizeVideo
+        from pipeline.pipes.video_undistortion import UndistortVideo
+
 
         # Map pipe names to classes
         pipes: dict = {
-            "intrinsic": cal.IntrinsicCalibration,
-            "video_synchronization": vp.SynchronizeVideo,
-            "video_undistortion": vp.UndistortVideo,
-            "lane_detection": loc.DetectLane,
-            "extrinsic": cal.ExtrinsicCalibration,
-            "ball_tracker": loc.TrackBall,
-            "ball_localization": loc.LocalizeBall,
-            "ball_rotation": loc.SpinBall
+            "intrinsic": IntrinsicCalibration,
+            "video_synchronization": SynchronizeVideo,
+            "video_undistortion": UndistortVideo,
+            "lane_detection": DetectLane,
+            "extrinsic": ExtrinsicCalibration,
+            "ball_tracker": TrackBall,
+            "ball_localization": LocalizeBall,
+            "ball_rotation": SpinBall
         }
 
         # Instantiate pipe objects with the current save_name
