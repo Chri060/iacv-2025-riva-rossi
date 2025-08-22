@@ -3,7 +3,7 @@ import numpy as np
 from numpy.typing import NDArray
 from matplotlib.axes import Axes
 
-from pipeline.environment import BallTrajectory3d
+from pipeline.environment import BallTrajectory3d, Camera
 
 
 def get_3d_plot(name: str = "3D Plot") -> Axes:
@@ -28,7 +28,7 @@ def bowling_lane(ax: Axes, corners: NDArray, min_offset: float = 3, max_offset: 
     Plots a bowling lane.
     """
     set_limits(ax, np.min(corners[:, :]) - min_offset, np.max(corners[:, :]) + max_offset)
-    ax.view_init(lev=45, azim=15)
+    ax.view_init(elev=45, azim=15)
 
     ll, ul, ur, lr = corners[0], corners[1], corners[2], corners[3]
     ax.plot([ll[0], ul[0]], [ll[1], ul[1]], [ll[2], ul[2]], color="blue")
@@ -88,3 +88,10 @@ def set_limits(ax: Axes, minimum: float, maximum: float):
     ax.set_xlim(minimum, maximum)
     ax.set_ylim(minimum, maximum)
     ax.set_zlim(minimum, maximum)
+
+
+def camera(ax: Axes, camera_data: Camera, line_color: str = None):
+    """
+    Plots a camera in the given axes.
+    """
+    reference_frame(ax, camera_data.position, camera_data.rotation, length=3, label=camera_data.name, colors=line_color)
