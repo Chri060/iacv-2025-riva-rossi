@@ -82,19 +82,6 @@ class LocalizeBall(Pipe):
 
         points_3d = points_3d[start_over:end_over]
 
-        # Smooth the 3D trajectory using spline interpolation
-        lam = 100
-        t = np.arange(0, len(points_3d), 1)
-        y1 = points_3d[:, 0]
-        y2 = points_3d[:, 1]
-        y3 = points_3d[:, 2]
-        spl_x = make_smoothing_spline(t, y1, lam=lam)
-        spl_y = make_smoothing_spline(t, y2, lam=lam)
-        spl_z = make_smoothing_spline(t, y3, lam=lam)
-
-        # Update points_3d with smoothed coordinates
-        points_3d = np.array([spl_x(t), spl_y(t), spl_z(t)]).T.reshape(-1, 3)
-
         # Store the 3D trajectory in a Ball_Trajectory_3D object
         trajectory_3d = BallTrajectory3d(views[0].trajectory.n_frames)
         start_3d = start + start_over
@@ -116,7 +103,6 @@ class LocalizeBall(Pipe):
 
         # Define views: (elev, azim)
         views = {
-
             "back": (20, 180),
             "top": (90, -90),
             "side": (0, 90),

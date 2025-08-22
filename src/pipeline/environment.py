@@ -467,6 +467,7 @@ class Environment:
     Provides static methods to initialize and access views and run processing pipelines.
     """
 
+    visualization = None
     CV_VISUALIZATION_NAME = "OpenCV Visualization"
     video_name: str = ""
     camera_names: list[str] = []
@@ -640,7 +641,7 @@ class DataManager:
             with open(f"{DataManager.save_path}/{save_name}.pkl", "wb") as out:
                 pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
         else:
-            with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name}.pkl", "wb") as out:
+            with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl", "wb") as out:
                 pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
@@ -664,7 +665,7 @@ class DataManager:
                     obj = pickle.load(inp)
                     return obj
             else:
-                with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name}.pkl", "rb") as inp:
+                with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl", "rb") as inp:
                     obj = pickle.load(inp)
                     return obj
         except FileNotFoundError:

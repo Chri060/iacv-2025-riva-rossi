@@ -219,7 +219,7 @@ class TrackBall(Pipe):
         if save_path and first_frame is not None:
             full_traj_frame = first_frame.copy()
             trajectory.plot_onto(full_traj_frame)
-            cv.imwrite(f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_name}.png", full_traj_frame)
+            cv.imwrite(f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_name.removesuffix(".mp4")}.png", full_traj_frame)
 
         if out_video is not None:
             out_video.release()

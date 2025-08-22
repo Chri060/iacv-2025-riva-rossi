@@ -1,11 +1,10 @@
 import cv2 as cv
 import numpy as np
-import plotly.graph_objects as go
-from dash import dcc, html
-from scipy.interpolate import make_smoothing_spline
+from dash import html
 import matplotlib.pyplot as plt
-import pipeline.plot_utils as plot_utils
-from pipeline.environment import BallTrajectory3d, DataManager, Environment
+
+from pipeline import plot_utils
+from pipeline.environment import DataManager, Environment
 from pipeline.pipe import Pipe
 
 class SpinBall(Pipe):
@@ -20,7 +19,13 @@ class SpinBall(Pipe):
         and plots 2D rotation axis.
         """
 
-        # Visualization flag
+        # Graph save path
+        try:
+            graph_save_path = params["graph_save_path"]
+        except Exception as _:
+            raise Exception("Missing required parameter : save_path")
+
+        # Visualization
         try:
             visualization = params.get("visualization", Environment.visualization)
         except AttributeError:
@@ -184,67 +189,112 @@ class SpinBall(Pipe):
         Environment.set("spin_rates", spin_results)
         Environment.set("axis_points", axis_points)
 
+        # --- Combine both camera results into one ---
+        if len(spin_results) >= 2:
+            cams = list(spin_results.keys())
+            spins1 = spin_results[cams[0]]
+            spins2 = spin_results[cams[1]]
+            min_len = min(len(spins1), len(spins2))
+            combined = []
+
+            for i in range(min_len):
+                s1, s2 = spins1[i], spins2[i]
+                if s1 > 0 and s2 > 0:
+                    combined.append((s1 + s2) / 2.0)
+                elif s1 > 0:
+                    combined.append(s1)
+                elif s2 > 0:
+                    combined.append(s2)
+                else:
+                    combined.append(0.0)
+
+            combined = np.array(combined, dtype=np.float32)
+            spin_results["combined"] = combined
+
         plt.figure(figsize=(10, 6))
         for cam_name, spins in spin_results.items():
             spins_rps = spins / (2 * np.pi)
             window = 5
             spins_smooth = np.convolve(spins_rps, np.ones(window) / window, mode='same')
-            plt.plot(abs(spins_smooth), label=f"{cam_name}")
+            if cam_name == "combined":
+                plt.plot(abs(spins_smooth), label="Combined", linewidth=2.5, color="black")
+            else:
+                plt.plot(abs(spins_smooth), label=f"{cam_name}", alpha=0.5)
 
         plt.xlabel("Frame")
         plt.ylabel("Spin rate (rev/s)")
         plt.title("Ball Spin Rate Over Time")
         plt.legend()
         plt.grid(True)
-        plt.savefig("spin_rate_over_time.png", dpi=300, bbox_inches="tight")
-        plt.show()
+        plt.savefig(f"{graph_save_path}/angular_speed/{Environment.save_name}_{Environment.video_name.removesuffix(".mp4")}.png", dpi=300, bbox_inches="tight")
+        if visualization:
+            plt.show()
+        else:
+            plt.close()
 
-        fig = plt.figure(figsize=(8, 8))
+        fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
+        ax.set_title("Ball Spin Axes : 3D Visualization")
 
-        # --- Known real ball radius (in same units as trajectory_3d) ---
-        R_ball = 0.11  # meters (example: bowling ball ~11 cm radius)
+        # --- Plot lane & trajectory ---
+        plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
+        plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
 
-        # --- Find the first valid center ---
-        valid_centers = [c for c in trajectory_3d.coords if c[0] is not None]
-        if not valid_centers:
-            raise ValueError("No valid 3D coordinates found in trajectory.")
+        # --- Plot predicted spin axes along trajectory ---
+        R_ball = 0.1091  # radius [m]
+        L = R_ball * 2
+        trajectory_3d = Environment.get("3D_trajectory")
 
-        center0 = valid_centers[0]
+        cam_names = list(axis_points.keys())
+        first_cam_name = cam_names[0]
+        other_cam_name = cam_names[1] if len(cam_names) > 1 else None
 
-        # --- Draw reference sphere at the first valid center ---
-        u = np.linspace(0, 2 * np.pi, 50)
-        v = np.linspace(0, np.pi, 50)
-        x = center0[0] + R_ball * np.outer(np.cos(u), np.sin(v))
-        y = center0[1] + R_ball * np.outer(np.sin(u), np.sin(v))
-        z = center0[2] + R_ball * np.outer(np.ones_like(u), np.cos(v))
-        ax.plot_surface(x, y, z, color='lightblue', alpha=0.3, linewidth=0)
-
-        # --- Plot all predicted axes ---
-        L = R_ball * 2  # axis length scaling
-        for frame_idx, (center, axis_vec) in enumerate(zip(trajectory_3d.coords, axis_points[view.camera.name])):
+        for i, center in enumerate(trajectory_3d.coords):
             if center[0] is None:
-                continue  # skip missing centers
+                continue
+
+            # Try first camera
+            axis_vec = axis_points[first_cam_name][i] if i < len(axis_points[first_cam_name]) else None
+
+            # If not available, fallback to second camera
+            if (axis_vec is None or np.linalg.norm(axis_vec) < 1e-6) and other_cam_name is not None:
+                if i < len(axis_points[other_cam_name]):
+                    axis_vec = axis_points[other_cam_name][i]
+
+            # Skip if still invalid
             if axis_vec is None or np.linalg.norm(axis_vec) < 1e-6:
                 continue
+
             axis_vec = axis_vec / np.linalg.norm(axis_vec)
-            start = center - axis_vec * L
-            end = center + axis_vec * L
-            ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]],
-                    color='red', alpha=0.3)
+            start = np.array(center) - axis_vec * L
+            end = np.array(center) + axis_vec * L
+            ax.plot([start[0], end[0]],
+                    [start[1], end[1]],
+                    [start[2], end[2]],
+                    color='red', alpha=0.4)
 
-        # --- Formatting ---
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
-        ax.set_zlabel("Z")
-        ax.set_title("3D Ball Spin Axes Over Time")
-        ax.set_box_aspect([1, 1, 1])  # equal aspect ratio
+        # --- Define standard views (elev, azim) ---
+        views = {
+            "back": (20, 180),
+            "top": (90, -90),
+            "side": (0, 90),
+            "front": (20, 0),
+        }
 
-        plt.show()
+        # --- Save from each view ---
+        for name, (elev, azim) in views.items():
+            ax.view_init(elev=elev, azim=azim)
+            plt.savefig(
+                f"{graph_save_path}/axis/{Environment.save_name}_{name}_{Environment.video_name.removesuffix(".mp4")}.png",
+                dpi=300, bbox_inches="tight")
+        if visualization:
+            plt.show()
+        else:
+            plt.close(fig)
 
     def load(self, params: dict = None):
         """
-        Load previously saved spin data.
+        Load previously saved spin data and visualize.
 
         Args:
             params (dict, optional): Dictionary that may contain flags, e.g., 'visualization' (bool)
@@ -252,6 +302,12 @@ class SpinBall(Pipe):
         Returns:
             dict: A dictionary with 'spin_results' and 'axis_points'
         """
+
+        # Visualization
+        try:
+            visualization = params.get("visualization", Environment.visualization)
+        except AttributeError:
+            visualization = Environment.visualization
 
         data = DataManager.load(self.save_name)
         spin_results = data.get("spin_results")
@@ -262,6 +318,72 @@ class SpinBall(Pipe):
 
         Environment.set("spin_rates", spin_results)
         Environment.set("axis_points", axis_points)
+
+        # --- Combine both camera results into one if possible ---
+        if visualization:
+            if len(spin_results) >= 2:
+                cams = list(spin_results.keys())
+                spins1 = spin_results[cams[0]]
+                spins2 = spin_results[cams[1]]
+                min_len = min(len(spins1), len(spins2))
+                combined = []
+
+                for i in range(min_len):
+                    s1, s2 = spins1[i], spins2[i]
+                    if s1 > 0 and s2 > 0:
+                        combined.append((s1 + s2) / 2.0)
+                    elif s1 > 0:
+                        combined.append(s1)
+                    elif s2 > 0:
+                        combined.append(s2)
+                    else:
+                        combined.append(0.0)
+
+                combined = np.array(combined, dtype=np.float32)
+                spin_results["combined"] = combined
+
+            # --- Plot spin results ---
+            plt.figure(figsize=(10, 6))
+            for cam_name, spins in spin_results.items():
+                spins_rps = spins / (2 * np.pi)  # convert rad/s → rev/s
+                window = 5
+                spins_smooth = np.convolve(spins_rps, np.ones(window) / window, mode='same')
+                if cam_name == "combined":
+                    plt.plot(abs(spins_smooth), label="Combined", linewidth=2.5, color="black")
+                else:
+                    plt.plot(abs(spins_smooth), label=f"{cam_name}", alpha=0.5)
+
+            plt.xlabel("Frame")
+            plt.ylabel("Spin rate (rev/s)")
+            plt.title("Ball Spin Rate Over Time")
+            plt.legend()
+            plt.grid(True)
+            plt.show()
+
+            # --- Plot 3D lane, trajectory & spin axes ---
+            fig = plt.figure(figsize=(10, 6))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.set_title("Ball Spin Axes : 3D Visualization")
+
+            # Lane & trajectory
+            plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
+            trajectory_3d = Environment.get("3D_trajectory")
+            plot_utils.trajectory(ax, trajectory_3d)
+
+            # Spin axes
+            R_ball = 0.11  # m
+            L = R_ball * 2
+            for center, axis_vec in zip(trajectory_3d.coords, axis_points[list(axis_points.keys())[0]]):
+                if center[0] is None:
+                    continue
+                if axis_vec is None or np.linalg.norm(axis_vec) < 1e-6:
+                    continue
+                axis_vec = axis_vec / np.linalg.norm(axis_vec)
+                start = np.array(center) - axis_vec * L
+                end = np.array(center) + axis_vec * L
+                ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], color='red', alpha=0.4)
+
+            plt.show()
 
         input("\033[92mPress Enter to continue...\033[0m")
 
