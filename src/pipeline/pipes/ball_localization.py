@@ -124,7 +124,7 @@ class LocalizeBall(Pipe):
             ax = plot_utils.get_3d_plot("Ball Localization : 3D Visualization")
             plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
             plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
-            plot_utils.show()
+            plt.show(block=True)
 
         input("\033[92mPress Enter to continue...\033[0m")
 

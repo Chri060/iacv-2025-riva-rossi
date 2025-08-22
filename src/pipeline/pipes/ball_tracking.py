@@ -1,4 +1,4 @@
-import collections
+from collections.abc import Iterable
 from typing import cast
 
 from ultralytics import YOLO
@@ -53,7 +53,7 @@ class TrackBall(Pipe):
             visualization = Environment.visualization
 
         # Load saved tracking results
-        tracking_results = cast(collections.Iterable, DataManager.load(self.save_name))
+        tracking_results = cast(Iterable, DataManager.load(self.save_name))
 
         captures, trajectories = [], []
 

@@ -1,8 +1,11 @@
+from typing import cast
+
 import cv2 as cv
 import numpy as np
 from cv2.typing import MatLike
 from pipeline.environment import DataManager, Environment
 from pipeline.pipe import Pipe
+
 
 class DetectLane(Pipe):
     """
@@ -10,6 +13,7 @@ class DetectLane(Pipe):
         in each camera view. The detection relies on manual point selection, where the user
         clicks on lane corners within sampled frames from the input videos.
     """
+
     def execute(self, params: dict):
         """
         Executes lane detection for all camera views.
@@ -20,21 +24,13 @@ class DetectLane(Pipe):
         Finally, saves all detection results using DataManager.
 
         Args:
-            params (dict): Dictionary that may contain 'scale' key for image scaling
+            params (dict): Dictionary that may contain the 'scale' key for image scaling
                            during manual point selection (default: [0.7, 0.7]).
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-
-        # Scale factor
-        try:
-            scales = params.get("scale", [0.7, 0.7])
-        except Exception as _:
-            scales = [0.7, 0.7]
+        # Load parameters
+        save_path = params["save_path"]
+        scales = params.get("scale", [0.7, 0.7])
 
         detection_results = {}
 
@@ -51,7 +47,8 @@ class DetectLane(Pipe):
             ret, frame = capture.read()
 
             # Manually select lane corner points on the chosen frame
-            view.lane.corners = np.array(self.__manual_point_selection(frame, save_path, view.camera.name , scale=scales[i]))
+            view.lane.corners = np.array(
+                self.manual_point_selection(frame, save_path, view.camera.name, scale=scales[i]))
 
             # Reset video capture to the first frame
             capture.set(cv.CAP_PROP_POS_FRAMES, 0)
@@ -66,23 +63,14 @@ class DetectLane(Pipe):
 
     def load(self, params: dict):
         """
-        Loads previously detected lane corner points and optionally visualizes them.
+        Loads previously detected lane corner points.
         If visualization is enabled, draws the points on the middle frame of each video
         and displays stacked side-by-side frames.
-
-        Args:
-            params (dict): Dictionary that may contain 'visualization' key to enable/disable
-                           visualization (default: Environment.visualization).
         """
 
-        # Visualization
-        try:
-            visualization = params.get("visualization", Environment.visualization)
-        except AttributeError as _:
-            visualization = Environment.visualization
-
-        # Load previously saved detection results
-        detection_results = DataManager.load(self.save_name)
+        # Load parameters
+        visualization = params.get("visualization", Environment.visualization)
+        detection_results = cast(dict, DataManager.load(self.save_name))
 
         frames = []
 
@@ -112,7 +100,8 @@ class DetectLane(Pipe):
         if visualization:
             frame1 = frames[0]
             frame2 = frames[1]
-            frame2_resized = cv.resize(frame2, (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])), frame1.shape[0]))
+            frame2_resized = cv.resize(frame2,
+                                       (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])), frame1.shape[0]))
             stacked_frame = np.hstack((frame1, frame2_resized))
             frame_to_plot = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
             cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)
@@ -120,19 +109,18 @@ class DetectLane(Pipe):
 
         input("\033[92mPress Enter to continue...\033[0m")
 
+    def plotly_page(self, params: dict):
+        """
+        No plotly implementation.
+        """
+
+        return None
+
     @staticmethod
-    def __manual_point_selection(image: MatLike, save_path, camera_name, scale: float = 0.5):
+    def manual_point_selection(image: MatLike, save_path: str, camera_name: str, scale: float = 0.5):
         """
         Allows the user to manually select points on an image using mouse clicks.
         Points are scaled back to original image coordinates and returned as a list.
-
-        Args:
-            image (MatLike): Input image on which points are selected.
-            scale (float): Scaling factor to resize image for easier point selection
-                           (default: 0.5).
-
-        Returns:
-            List[List[float]]: List of selected points [[x1, y1], [x2, y2], ...].
         """
 
         selected_points = []
@@ -147,7 +135,7 @@ class DetectLane(Pipe):
                 cv.circle(display_image, (x, y), 3, (0, 0, 255), -1)
                 cv.imshow(Environment.CV_VISUALIZATION_NAME, display_image)
 
-                # Append coordinates scaled back to original
+                # Append coordinates scaled back to the original
                 selected_points.append([x * upscale, y * upscale])
 
         cv.imshow(Environment.CV_VISUALIZATION_NAME, display_image)
@@ -166,8 +154,4 @@ class DetectLane(Pipe):
             return selected_points
 
         cv.destroyAllWindows()
-        return None
-
-    @staticmethod
-    def plotly_page(self) -> None:
         return None

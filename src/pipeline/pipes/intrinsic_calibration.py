@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import glob, os, random
 import cv2 as cv
 import numpy as np
@@ -7,6 +8,7 @@ from typing import Tuple, cast
 from pipeline.environment import DataManager, Environment
 from pipeline.pipe import Pipe
 
+
 class IntrinsicCalibration(Pipe):
     """
     This class performs intrinsic camera calibration using images or video frames
@@ -14,55 +16,15 @@ class IntrinsicCalibration(Pipe):
     (camera matrix) and distortion coefficients for each camera defined in Environment.
     """
 
-    def show_results(self):
-        cal_results = DataManager.load(self.save_name, intrinsic=True)
-
-        for res in cal_results:
-            print(f"\033[96m>>>>> Camera: {res['camera_name']}\033[0m")
-            print("Intrinsic matrix:")
-            for row in res['intrinsic']:
-                print("  " + "  ".join(f"{val:10.4f}" for val in row))
-
-            print("Distortion coefficients:")
-            print("  " + "  ".join(f"{val:10.6f}" for val in res['distortion'][0]))
-            print("")
-
-        input("\033[92mPress Enter to continue...\033[0m")
-
-    @staticmethod
-    def __process_params(params: dict):
-        """
-        Process and validate input parameters.
-        Required:
-            - images_path: path to directory containing calibration images/videos
-        Optional:
-            - visualization: enable OpenCV visualization (default: Environment.visualization)
-            - checkerboard_sizes: list of checkerboard sizes for each camera
-        """
-
-        # Image path
-        try:
-            images_path = params["images_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : images_path")
-
-        # Visualization flag
-        try:
-            visualization = params.get("visualization", Environment.visualization)
-        except AttributeError as _:
-            visualization = Environment.visualization
-
-        # Checkerboard size per camera (default: 9x6 for both cameras)
-        checkerboard_sizes = params.get("checkerboard_sizes", [[9, 6], [9, 6]])
-
-        return images_path, visualization, checkerboard_sizes
-
     def execute(self, params: dict):
         """
         Main execution method: loops through cameras and performs intrinsic calibration.
         """
 
-        images_path, visualization, checkerboard_sizes = self.__process_params(params)
+        # Load parameters
+        images_path = params["images_path"]
+        visualization = params.get("visualization", Environment.visualization)
+        checkerboard_sizes = params.get("checkerboard_sizes", [[9, 6], [9, 6]])
 
         calibration_results = []
         for i, camera_name in enumerate(Environment.camera_names):
@@ -73,7 +35,7 @@ class IntrinsicCalibration(Pipe):
 
             # Generate "world points" based on checkerboard grid (Z=0 plane)
             world_points = np.zeros((checkerboard_size[0] * checkerboard_size[1], 3), np.float32)
-            world_points[:, :2] = np.mgrid[0 : checkerboard_size[0], 0 : checkerboard_size[1]].T.reshape(-1, 2)
+            world_points[:, :2] = np.mgrid[0: checkerboard_size[0], 0: checkerboard_size[1]].T.reshape(-1, 2)
 
             # Storage for calibration
             object_points: list[np.ndarray] = []
@@ -93,7 +55,7 @@ class IntrinsicCalibration(Pipe):
                         print(f"Error reading image: {input_image}")
                         continue
 
-                    refined_corners = self.__find_checkerboard(img, checkerboard_size, criteria, visualization)
+                    refined_corners = self.find_checkerboard(img, checkerboard_size, criteria, visualization)
 
                     if refined_corners is not None:
                         object_points.append(world_points)
@@ -104,7 +66,7 @@ class IntrinsicCalibration(Pipe):
             # Process calibration videos
             videos = glob.glob(os.path.join(images_path, camera_name, "*.mp4"))
 
-            if videos :
+            if videos:
                 for video in videos:
                     capture = cv.VideoCapture(video)
                     total_frames = int(capture.get(cv.CAP_PROP_FRAME_COUNT))
@@ -122,7 +84,7 @@ class IntrinsicCalibration(Pipe):
                             print(f"Unable to read frame {idx} from {video}")
                             continue
 
-                        refined_corners = self.__find_checkerboard(frame, checkerboard_size, criteria, visualization)
+                        refined_corners = self.find_checkerboard(frame, checkerboard_size, criteria, visualization)
 
                         if refined_corners is not None:
                             object_points.append(world_points)
@@ -145,13 +107,49 @@ class IntrinsicCalibration(Pipe):
             else:
                 raise Exception("No valid checkerboard detections. Calibration failed.")
 
-        self.show_results()
+        self.show_results(cast(Iterable, DataManager.load(self.save_name, intrinsic=True)))
 
         # Save results
         DataManager.save(calibration_results, self.save_name, intrinsic=True)
 
+    def load(self):
+        """
+        Load calibration results from storage and apply them to Environment views.
+        """
+
+        cal_results = cast(Iterable, DataManager.load(self.save_name, intrinsic=True))
+
+        for res in cal_results:
+            view = Environment.get(res["camera_name"])
+            view.camera.intrinsic = res["intrinsic"]
+            view.camera.distortion = res["distortion"]
+
+        self.show_results(cast(Iterable, DataManager.load(self.save_name, intrinsic=True)))
+
+    def plotly_page(self, params: dict):
+        """
+        No plotly implementation.
+        """
+
+        return None
+
     @staticmethod
-    def __find_checkerboard(img: MatLike, checkerboard_size: Tuple[int, int], criteria: Tuple[int, int, float], visualization: bool):
+    def show_results(cal_results: Iterable):
+        for res in cal_results:
+            print(f"\033[96m>>>>> Camera: {res['camera_name']}\033[0m")
+            print("Intrinsic matrix:")
+            for row in res['intrinsic']:
+                print("  " + "  ".join(f"{val:10.4f}" for val in row))
+
+            print("Distortion coefficients:")
+            print("  " + "  ".join(f"{val:10.6f}" for val in res['distortion'][0]))
+            print("")
+
+        input("\033[92mPress Enter to continue...\033[0m")
+
+    @staticmethod
+    def find_checkerboard(img: MatLike, checkerboard_size: Tuple[int, int], criteria: Tuple[int, int, float],
+                          visualization: bool):
         """
         Detects a checkerboard in an image, refines corner detection,
         and optionally visualizes the result.
@@ -184,16 +182,3 @@ class IntrinsicCalibration(Pipe):
             return refined_corners
 
         return None
-
-    def load(self):
-        """
-        Load calibration results from storage and apply them to Environment views.
-        """
-
-        cal_results = DataManager.load(self.save_name, intrinsic=True)
-        for res in cal_results:
-            view = Environment.get(res["camera_name"])
-            view.camera.intrinsic = res["intrinsic"]
-            view.camera.distortion = res["distortion"]
-
-        self.show_results()

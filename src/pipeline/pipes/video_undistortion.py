@@ -9,21 +9,13 @@ from pipeline.pipe import Pipe
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+
 class UndistortVideo(Pipe):
     """
     A pipeline step that undistorts videos using known camera calibration parameters.
-
-    This class:
-    - Reads videos from the Environment (per camera view)
-    - Applies OpenCV’s undistortion using camera intrinsics and distortion coefficients
-    - Saves the undistorted videos to disk
-    - Updates the Environment with the new video files and updated camera intrinsics
-    - Provides a method to reload already undistorted videos
-    - Offers both OpenCV (real-time) and Plotly Dash (web-based) visualization options
     """
 
-    @staticmethod
-    def execute(params: dict):
+    def execute(self, params: dict):
         """
         Execute the undistortion process on all videos in the environment.
 
@@ -59,7 +51,8 @@ class UndistortVideo(Pipe):
             out = cv.VideoWriter(output_path, fourcc, fps, width_height)
 
             # Compute optimal intrinsic matrix (removes black borders)
-            new_intrinsic, _ = cv.getOptimalNewCameraMatrix(cam.intrinsic, cam.distortion, width_height, 1, width_height)
+            new_intrinsic, _ = cv.getOptimalNewCameraMatrix(cam.intrinsic, cam.distortion, width_height, 1,
+                                                            width_height)
 
             # Process all frames in the video
             while view.video.capture.isOpened():
@@ -68,7 +61,8 @@ class UndistortVideo(Pipe):
                     break
 
                 # Undistort frame
-                frame_undistort = cv.undistort( frame, cam.intrinsic, cam.distortion, None, newCameraMatrix=new_intrinsic)
+                frame_undistort = cv.undistort(frame, cam.intrinsic, cam.distortion, None,
+                                               newCameraMatrix=new_intrinsic)
 
                 # Real-time display of undistorted video
                 if visualization:
@@ -89,8 +83,7 @@ class UndistortVideo(Pipe):
 
         input("\033[92mPress Enter to continue...\033[0m")
 
-    @staticmethod
-    def load(params: dict):
+    def load(self, params: dict):
         """
         Load previously undistorted videos into the environment.
 
@@ -133,7 +126,8 @@ class UndistortVideo(Pipe):
                 ret2, frame2 = cap2.read()
                 if not ret1 or not ret2:
                     break
-                frame2_resized = cv.resize(frame2, (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])), frame1.shape[0]))
+                frame2_resized = cv.resize(frame2, (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])),
+                                                    frame1.shape[0]))
                 stacked_frame = np.hstack((frame1, frame2_resized))
                 frame_to_plot = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
                 cv.imshow(Environment.CV_VISUALIZATION_NAME, frame_to_plot)

@@ -1,4 +1,5 @@
 import pickle, random, re
+from typing import Any
 
 import cv2 as cv
 import numpy as np
@@ -64,7 +65,7 @@ class Video:
         # Get frames per second
         fps = self.capture.get(cv.CAP_PROP_FPS)
 
-        # Get total number of frames
+        # Get the total number of frames
         frame_count = int(self.capture.get(cv.CAP_PROP_FRAME_COUNT))
 
         # Calculate video duration in seconds
@@ -142,7 +143,7 @@ class BallTrajectory2d:
         """
 
         if curr_frame > self.n_frames or curr_frame < 0:
-            raise Exception("Trying to access an out of bount frame")
+            raise Exception("Trying to access an out of bound frame")
         self.image_points[curr_frame] = coord
         self.radii[curr_frame] = r
 
@@ -155,7 +156,8 @@ class BallTrajectory2d:
         elif curr_frame > self.end:
             self.end = curr_frame
 
-    def get_by_frame(self, curr_frame: int) -> tuple[NDArray, float]:
+    def get_by_frame(self, curr_frame: int) -> tuple[
+        np.ndarray[tuple[int, ...], np.dtype[Any]], np.ndarray[tuple[int, ...], np.dtype[Any]]]:
         """
         Retrieve ball coordinates and radius at a specific frame.
 
@@ -232,11 +234,11 @@ class BallTrajectory2d:
 
                     if inverse_fit:
                         y_inv = 1 / y_known
-                        coeffs = np.polyfit(x_known, y_inv, 1)
-                        arr_interp[i] = int(round(1 / np.polyval(coeffs, i)))
+                        coefficients = np.polyfit(x_known, y_inv, 1)
+                        arr_interp[i] = int(round(1 / np.polyval(coefficients, i)))
                     else:
-                        coeffs = np.polyfit(x_known, y_known, 1)
-                        arr_interp[i] = int(round(np.polyval(coeffs, i)))
+                        coefficients = np.polyfit(x_known, y_known, 1)
+                        arr_interp[i] = int(round(np.polyval(coefficients, i)))
                 elif known_indices:
                     arr_interp[i] = int(arr_interp[known_indices[-1]])
                 else:
@@ -257,13 +259,13 @@ class BallTrajectory2d:
         Keeps initial None points untouched and converts all interpolated points to int.
 
         Args:
-            window (int): Number of the previous known points to consider for linear fitting.
+            window (int): Number of the previously known points to consider for linear fitting.
         """
 
         n = len(self.image_points)
-        interp_points = self.image_points.copy()  # Copy to avoid modifying original immediately
+        interp_points = self.image_points.copy()  # Copy to avoid modifying the original immediately
 
-        # Find index of the first known point where both x and y are not None
+        # Find the index of the first known point where both x and y are not None
         first_known = next((i for i, p in enumerate(interp_points) if p is not None and all(v is not None for v in p)),
                            None)
         if first_known is None:
@@ -272,8 +274,8 @@ class BallTrajectory2d:
         # Iterate over all frames after the first known point
         for i in range(first_known + 1, n):
             # Check if the current point is missing (None or contains None)
-            if interp_points[i] is None or np.any(interp_points[i] == None):
-                # Collect the last 'window' known points before current frame
+            if interp_points[i] is None or np.any(interp_points[i] is None):
+                # Collect the last 'window' known points before the current frame
                 known_indices = [j for j in range(max(first_known, i - window), i) if interp_points[j] is not None]
 
                 if len(known_indices) >= 2:
@@ -283,13 +285,13 @@ class BallTrajectory2d:
                     y_known = np.array([interp_points[j][1] for j in known_indices], dtype=float)
 
                     # Linear regression: x(t) = a*t + b and y(t) = c*t + d
-                    A = np.vstack([t_known, np.ones(len(t_known))]).T
-                    x_coeff = np.linalg.lstsq(A, x_known, rcond=None)[0]
-                    y_coeff = np.linalg.lstsq(A, y_known, rcond=None)[0]
+                    matrix = np.vstack([t_known, np.ones(len(t_known))]).T
+                    x_coefficient = np.linalg.lstsq(matrix, x_known, rcond=None)[0]
+                    y_coefficient = np.linalg.lstsq(matrix, y_known, rcond=None)[0]
 
                     # Interpolate the missing point
-                    interp_points[i] = [int(round(np.dot([i, 1], x_coeff))),
-                                        int(round(np.dot([i, 1], y_coeff)))]
+                    interp_points[i] = [int(round(np.dot([i, 1], x_coefficient))),
+                                        int(round(np.dot([i, 1], y_coefficient)))]
                 elif known_indices:
                     # If only one known point exists, propagate it forward
                     interp_points[i] = [int(interp_points[known_indices[-1]][0]),
@@ -375,11 +377,11 @@ class BallTrajectory3d:
         self.end = end
         self.fps = fps
 
-        # If coordinates are provided, ensure their length matches number of frames
+        # If coordinates are provided, ensure their length matches the number of frames
         if coords is not None:
             assert len(coords) == n_frames
 
-        # If no coordinates provided, initialize as a n_frames x 3 array with None values
+        # If no coordinates provided, initialize as an n_frames x 3 array with None values
         self.coords = coords or np.array([[None, None, None]] * n_frames)
         self.radius = radius
 
@@ -403,7 +405,7 @@ class BallTrajectory3d:
 
         self.coords[curr_frame] = coord
 
-        # Update start and end frames based on current frame
+        # Update start and end frames based on the current frame
         if self.start is None:
             self.start = curr_frame
             self.end = curr_frame
@@ -588,7 +590,7 @@ class Environment:
             name: Name of the object to retrieve.
 
         Returns:
-            The object stored under 'name' in env_vars.
+            The object is stored under 'name' in env_vars.
 
         Raises:
             Exception: If the environment is not initialized or the name does not exist.
@@ -611,7 +613,7 @@ class Environment:
             overwrite: Whether to overwrite an existing object with the same name.
 
         Raises:
-            Exception: If environment not initialized or attempting to overwrite without permission.
+            Exception: If the environment is not initialized or attempting to overwrite without permission.
         """
 
         if not Environment.__initialized:
@@ -621,7 +623,7 @@ class Environment:
         Environment.env_vars[name] = obj
 
     @staticmethod
-    def get_views() -> list[View]:
+    def get_views() -> list[object | None]:
         """
         Returns:
             List of all View objects corresponding to the initialized cameras.
@@ -646,6 +648,7 @@ class DataManager:
         Args:
             obj: The Python object to save.
             save_name: Name of the file (without extension) to save the object as.
+            intrinsic: Whether the file is for intrinsic calibration.
         """
         if intrinsic:
             with open(f"{DataManager.save_path}/{save_name}.pkl", "wb") as out:
@@ -662,12 +665,10 @@ class DataManager:
 
         Args:
             save_name: Name of the file (without extension) to load the object from.
+            intrinsic: Whether the file is for intrinsic calibration.
 
         Returns:
             The deserialized Python object.
-
-        Raises:
-            Exception: If the file does not exist.
         """
 
         try:
@@ -681,5 +682,5 @@ class DataManager:
                     obj = pickle.load(inp)
                     return obj
         except FileNotFoundError:
+            print(f"Failed to find load : {save_name}")
             return None
-            raise Exception(f"Failed to find load : {save_name}")

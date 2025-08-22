@@ -97,7 +97,7 @@ class ExtrinsicCalibration(Pipe):
             [0, 0, 0],
             [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
             label="World reference frame",
-            lcolor="cyan"
+            line_color="cyan"
         )
 
         # Draw cameras in 3D space
@@ -222,11 +222,11 @@ class ExtrinsicCalibration(Pipe):
 
         # Draw world reference axes
         plot_utils.reference_frame(ax, [0, 0, 0], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], label="World reference frame",
-                                   lcolor="cyan")
+                                   line_color="cyan")
 
         # Draw cameras in 3D space
         for view in Environment.get_views():
             plot_utils.camera(ax, view.camera)
 
         # Show plot
-        plot_utils.show()
+        plt.show(block=True)

@@ -9,6 +9,7 @@ from pipeline.pipe import Pipe
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+
 class SynchronizeVideo(Pipe):
     """
     Class to synchronize two video streams based on their audio tracks.
@@ -62,16 +63,19 @@ class SynchronizeVideo(Pipe):
         target_duration = min(duration1, duration2)
 
         # Compute the audio time shift between the two videos
-        start_time = self.__get_time_shift(videos[0].path, videos[1].path)
-        print(f"{cam1_name} is ~{int(abs(start_time))} seconds {'ahead' if start_time < 0 else 'behind'} of {cam2_name}")
+        start_time = self.get_time_shift(videos[0].path, videos[1].path)
+        print(
+            f"{cam1_name} is ~{int(abs(start_time))} seconds {'ahead' if start_time < 0 else 'behind'} of {cam2_name}")
 
         print(f"Saving results ({round(target_duration, 2)} s | {round(target_fps, 2)} fps)")
 
         # Apply the calculated time shift to synchronize videos
         if start_time >= 0:
-            self.__apply_shift(videos, output1_path, output2_path, target_fps, target_duration, start_time, 0, visualization)
+            self.apply_shift(videos, output1_path, output2_path, target_fps, target_duration, start_time, 0,
+                             visualization)
         else:
-            self.__apply_shift(videos, output1_path, output2_path, target_fps, target_duration, 0, -start_time, visualization)
+            self.apply_shift(videos, output1_path, output2_path, target_fps, target_duration, 0, -start_time,
+                             visualization)
 
         # Release original video captures and replace with synchronized versions
         view1.video.capture.release()
@@ -81,8 +85,7 @@ class SynchronizeVideo(Pipe):
 
         input("\n\033[92mPress Enter to continue...\033[0m")
 
-    @staticmethod
-    def load(params: dict):
+    def load(self, params: dict):
         """
        Load and optionally visualize synchronized videos.
 
@@ -120,7 +123,8 @@ class SynchronizeVideo(Pipe):
                 ret2, frame2 = cap2.read()
                 if not (ret1 and ret2):
                     break
-                frame2_resized = cv.resize(frame2, (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])), frame1.shape[0]))
+                frame2_resized = cv.resize(frame2, (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])),
+                                                    frame1.shape[0]))
                 stacked_frame = np.hstack((frame1, frame2_resized))
                 stacked_frame = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
                 cv.imshow(Environment.CV_VISUALIZATION_NAME, stacked_frame)
@@ -132,8 +136,50 @@ class SynchronizeVideo(Pipe):
 
         input("\033[92mPress Enter to continue...\033[0m")
 
+    def plotly_page(self, params: dict) -> dict[str, html.Div]:
+        """
+        Generate a Dash page with synchronized video players.
+
+        Parameters:
+            params (dict): Dictionary containing required parameters, e.g., "save_path"
+
+        Returns:
+            dict: Mapping of the class name to the Dash HTML page
+        """
+
+        # Save path
+        try:
+            save_path = params["save_path"]
+        except Exception as _:
+            raise Exception("Missing required parameter : save_path")
+
+        # Get the two views for display
+        view = Environment.get_views()
+        view1, view2 = view[0], view[1]
+
+        # Extract the folder name from the save path
+        folder = save_path.split("/")[-1]
+
+        # Build URLs for DashPlayer video components
+        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_name}"
+        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_name}"
+
+        # Create DashPlayer instances for each video
+        dp1 = dp.DashPlayer(id="player-1", url=url1, controls=True, width="100%", loop=True, playing=True)
+        dp2 = dp.DashPlayer(id="player-2", url=url2, controls=True, width="100%", loop=True, playing=True)
+
+        # Arrange players side by side in a single Div
+        page = html.Div(
+            children=[
+                html.Div(children=dp1, style={"height": "auto", "width": "49%", "display": "inline-block"}),
+                html.Div(children=dp2, style={"height": "auto", "width": "49%", "display": "inline-block"}),
+            ]
+        )
+
+        return {self.__class__.__name__: page}
+
     @staticmethod
-    def __get_time_shift(video1_path: str, video2_path: str) -> float:
+    def get_time_shift(video1_path: str, video2_path: str) -> float:
         """
        Compute the time offset between two videos using their audio tracks.
 
@@ -174,7 +220,8 @@ class SynchronizeVideo(Pipe):
             return 0.0
 
     @staticmethod
-    def __apply_shift(videos: list[Video], output_path1: str, output_path2: str, target_fps: float, target_duration: float, start1: float, start2: float, visualization: bool):
+    def apply_shift(videos: list[Video], output_path1: str, output_path2: str, target_fps: float,
+                    target_duration: float, start1: float, start2: float, visualization: bool):
         """
         Apply time shift to videos and save the synchronized versions.
 
@@ -227,9 +274,11 @@ class SynchronizeVideo(Pipe):
 
             # Side-by-side with frame index visualization
             if visualization:
-                frame2_resized = cv.resize(frame2, (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])), frame1.shape[0]))
+                frame2_resized = cv.resize(frame2, (int(frame2.shape[1] * (frame1.shape[0] / frame2.shape[0])),
+                                                    frame1.shape[0]))
                 stacked_frame = np.hstack((frame1, frame2_resized))
-                stacked_frame = cv.putText(stacked_frame, str(count), (30, 30), cv.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255, 0, 0), thickness=2, lineType=cv.LINE_AA)
+                stacked_frame = cv.putText(stacked_frame, str(count), (30, 30), cv.FONT_HERSHEY_SIMPLEX, fontScale=1,
+                                           color=(255, 0, 0), thickness=2, lineType=cv.LINE_AA)
                 stacked_frame = cv.resize(stacked_frame, dsize=(0, 0), fx=0.5, fy=0.5)
                 cv.imshow(Environment.CV_VISUALIZATION_NAME, stacked_frame)
                 cv.waitKey(1)
@@ -242,45 +291,3 @@ class SynchronizeVideo(Pipe):
             count += 1
             current_time1 += frame_time
             current_time2 += frame_time
-
-    def plotly_page(self, params: dict) -> dict[str, html.Div]:
-        """
-        Generate a Dash page with synchronized video players.
-
-        Parameters:
-            params (dict): Dictionary containing required parameters, e.g., "save_path"
-
-        Returns:
-            dict: Mapping of the class name to the Dash HTML page
-        """
-
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-
-        # Get the two views for display
-        view = Environment.get_views()
-        view1, view2 = view[0], view[1]
-
-        # Extract the folder name from the save path
-        folder = save_path.split("/")[-1]
-
-        # Build URLs for DashPlayer video components
-        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_name}"
-        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_name}"
-
-        # Create DashPlayer instances for each video
-        dp1 = dp.DashPlayer(id="player-1", url=url1, controls=True, width="100%", loop=True, playing=True )
-        dp2 = dp.DashPlayer(id="player-2", url=url2, controls=True, width="100%", loop=True, playing=True )
-
-        # Arrange players side by side in a single Div
-        page = html.Div(
-            children=[
-                html.Div(children=dp1, style={"height": "auto", "width": "49%", "display": "inline-block"}),
-                html.Div(children=dp2, style={"height": "auto", "width": "49%", "display": "inline-block"}),
-            ]
-        )
-
-        return {self.__class__.__name__: page}
