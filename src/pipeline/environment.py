@@ -1,4 +1,4 @@
-import os, pickle, random, re
+import pickle, random, re
 
 import cv2 as cv
 import numpy as np
@@ -444,6 +444,7 @@ class View:
     """
     Represents a single camera view of a video, optionally including lane information and a 2D ball trajectory.
     """
+
     def __init__(self, camera: Camera, video: Video, lane: Lane | None = None, trajectory: BallTrajectory2d | None = None,):
         """
         Initializes a View instance.
@@ -467,7 +468,7 @@ class Environment:
     """
 
     CV_VISUALIZATION_NAME = "OpenCV Visualization"
-    video_names: list[str] = []
+    video_name: str = ""
     camera_names: list[str] = []
     paths: dict[str, str] = {}
     env_vars: dict[str, object] = {}
@@ -481,13 +482,13 @@ class Environment:
 
         Args:
             save_name: Name to use when saving processed data.
-            global_parameters: Dictionary containing 'video_names', 'camera_names',
+            global_parameters: Dictionary containing 'video_name', 'camera_names',
                                'paths', 'coords', and 'visualization' flags.
         """
 
         print(f"Saves as : {save_name}")
         Environment.save_name = save_name
-        Environment.video_names = global_parameters.get("video_names", [])
+        Environment.video_name = global_parameters.get("video_name", "")
         Environment.camera_names = global_parameters.get("camera_names", [])
         Environment.paths = global_parameters.get("paths", {})
         Environment.env_vars = {}
@@ -506,11 +507,11 @@ class Environment:
         Stores each view in env_vars keyed by camera name.
         """
 
-        video_names = Environment.video_names
+        video_name = Environment.video_name
         camera_names = Environment.camera_names
         originals_path = Environment.paths["originals"]
         for i, camera_name in enumerate(camera_names):
-            full_path = f"{originals_path}/{camera_name}/{video_names[i]}"
+            full_path = f"{originals_path}/{camera_name}/{video_name}"
             video = Video(full_path)
             camera = Camera(camera_name)
             view = View(camera, video)
@@ -627,7 +628,7 @@ class DataManager:
     save_path: str = "resources/pickle/"
 
     @staticmethod
-    def save(obj: object, save_name: str) -> None:
+    def save(obj: object, save_name: str, intrinsic: bool = False) -> None:
         """
         Saves an object to disk using pickle.
 
@@ -635,12 +636,15 @@ class DataManager:
             obj: The Python object to save.
             save_name: Name of the file (without extension) to save the object as.
         """
-
-        with open(f"{DataManager.save_path}{save_name}.pkl", "wb") as out:
-            pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
+        if intrinsic:
+            with open(f"{DataManager.save_path}/{save_name}.pkl", "wb") as out:
+                pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
+        else:
+            with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name}.pkl", "wb") as out:
+                pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
-    def load(save_name: str) -> None:
+    def load(save_name: str, intrinsic: bool = False) -> object:
         """
         Loads an object from a pickle file.
 
@@ -655,21 +659,14 @@ class DataManager:
         """
 
         try:
-            with open(f"{DataManager.save_path}{save_name}.pkl", "rb") as inp:
-                obj = pickle.load(inp)
-                return obj
+            if intrinsic:
+                with open(f"{DataManager.save_path}/{save_name}.pkl", "rb") as inp:
+                    obj = pickle.load(inp)
+                    return obj
+            else:
+                with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name}.pkl", "rb") as inp:
+                    obj = pickle.load(inp)
+                    return obj
         except FileNotFoundError:
+            return None
             raise Exception(f"Failed to find load : {save_name}")
-
-    @staticmethod
-    def delete(save_name: str) -> None:
-        """
-        Deletes a saved pickle file.
-
-        Args:
-            save_name: Name of the file (without extension) to delete.
-        """
-
-        print(f"Deleting {save_name}")
-        os.remove(f"{DataManager.save_path}{save_name}.pkl")
-        print(f"> {save_name} deleted")

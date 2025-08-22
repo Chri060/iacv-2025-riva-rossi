@@ -1,16 +1,16 @@
 # Executes the entire standard pipeline
 save_name: default
 global:
-  video_names: ["full.mp4", "full.mp4"]
-  camera_names: ["nothing_2a", "iphone"]
+  video_name: "video8.mp4"
+  camera_names: ["nothing", "iphone"]
   paths:
     originals: "resources/videos/originals"
   coords:
-    world_lane: [[0, 0, 0], [12, 0, 0], [12, -1.07, 0], [0, -1.07, 0]]
+    world_lane: [[0, 0, 0], [19, 0, 0], [19, -1.07, 0], [0, -1.07, 0]]
   visualization: True
 pipeline:
   - name: intrinsic
-    type: execute
+    type: load
     params: {
       images_path : "resources/calibration",
     }
@@ -19,21 +19,35 @@ pipeline:
     params: {
       save_path : "resources/videos/sync"
     }
-  - name: video_stabilization
-    type: execute
   - name: video_undistortion
     type: execute
     params: {
-      save_path : "resources/videos/undistorted"
+      save_path: "resources/videos/undistorted"
     }
   - name: lane_detection
     type: execute
+    params: {
+      save_path: "resources/images/lane_detection",
+    }
   - name: extrinsic
     type: execute
+    params: {
+      save_path: "resources/graphs/extrinsic"
+    }
   - name: ball_tracker
     type: execute
     params: {
-      save_path: "resources/videos/tracking"
+      save_path: "resources/images/tracking",
     }
   - name: ball_localization
     type: execute
+    params: {
+      save_path: "resources/graphs/trajectory",
+      visualization: True
+    }
+  - name: ball_rotation
+    type: execute
+    params: {
+      save_path: "resources/videos/spinning",
+      visualization: True
+    }

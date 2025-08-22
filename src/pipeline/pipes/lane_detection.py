@@ -160,7 +160,7 @@ class DetectLane(Pipe):
             for pt in selected_points:
                 cv.circle(image, (int(pt[0]), int(pt[1])), 15, (0, 0, 255), -1)
 
-            final_save_path = f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_names[0].removesuffix('.mp4')}.png"
+            final_save_path = f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_name.removesuffix('.mp4')}.png"
             cv.imwrite(final_save_path, image)
             cv.destroyAllWindows()
             return selected_points

@@ -27,7 +27,7 @@ class Pipe:
 
         if save_name is None:
             save_name = "save"
-        self.save_name = f"{self.__class__.__name__}_{save_name}"
+        self.save_name = f"{save_name}_{self.__class__.__name__}"
 
     def execute(self, params: dict) -> None:
         """

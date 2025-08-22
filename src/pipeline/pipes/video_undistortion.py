@@ -52,7 +52,7 @@ class UndistortVideo(Pipe):
             fps, duration, width_height = view.video.get_video_properties()
 
             # Define the output video path
-            output_path = f"{save_path}/{cam.name}/{Environment.save_name}_{Environment.video_names[i]}"
+            output_path = f"{save_path}/{cam.name}/{Environment.save_name}_{Environment.video_name}"
 
             # Prepare the video writer
             fourcc = cv.VideoWriter_fourcc(*"mp4v")
@@ -117,7 +117,7 @@ class UndistortVideo(Pipe):
         # Reload undistorted videos into each camera view
         for i, camera_name in enumerate(Environment.camera_names):
             view = Environment.get(camera_name)
-            path = f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_names[i]}"
+            path = f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_name}"
 
             # Replace old capture with undistorted one
             paths.append(path)
@@ -167,8 +167,8 @@ class UndistortVideo(Pipe):
         folder = save_path.split("/")[-1]
 
         # Construct URLs for both videos
-        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_names[0]}"
-        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_names[1]}"
+        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_name}"
+        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_name}"
 
         # Dash video players
         dp1 = dp.DashPlayer(id="player-1", url=url1, controls=True, width="100%", loop=True, playing=True)

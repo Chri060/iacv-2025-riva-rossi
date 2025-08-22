@@ -125,7 +125,7 @@ class LocalizeBall(Pipe):
 
         for name, (elev, azim) in views.items():
             ax.view_init(elev=elev, azim=azim)
-            plt.savefig(f"{save_path}/{Environment.save_name}_{name}_{Environment.video_names[0].removesuffix(".mp4")}.png")
+            plt.savefig(f"{save_path}/{Environment.save_name}_{name}_{Environment.video_name.removesuffix(".mp4")}.png")
 
         plt.show()
 

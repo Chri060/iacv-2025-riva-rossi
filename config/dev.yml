@@ -1,8 +1,8 @@
 # To be used during development
 save_name: dev
 global:
-  video_names: ["video0.mp4", "video0.mp4"]
-  camera_names: ["nothing_2a", "iphone"]
+  video_name: "video8.mp4"
+  camera_names: ["nothing", "iphone"]
   paths:
     originals: "resources/videos/originals"
   coords:
@@ -46,7 +46,7 @@ pipeline:
       visualization: True
     }
   - name: ball_rotation
-    type: load
+    type: execute
     params: {
       save_path: "resources/videos/spinning",
       visualization: True

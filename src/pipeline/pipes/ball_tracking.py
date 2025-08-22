@@ -106,8 +106,8 @@ class TrackBall(Pipe):
         folder = save_path.split("/")[-1]
 
         # Build URLs for Dash video player
-        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_names[0]}"
-        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_names[1]}"
+        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_name}"
+        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_name}"
 
         # Create DashPlayer components for each video
         dp1 = dp.DashPlayer(id="player-1", url=url1, controls=True, width="100%", loop=True, playing=True)
@@ -142,7 +142,7 @@ class TrackBall(Pipe):
         # Initialize video writer if save_path is provided
         out_video = None
         if save_path:
-            out_path = f"{save_path.replace("images", "videos")}/{camera_name}/{Environment.save_name}_{Environment.video_names[0]}"
+            out_path = f"{save_path.replace("images", "videos")}/{camera_name}/{Environment.save_name}_{Environment.video_name}"
             out_video = cv.VideoWriter(out_path, cv.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
 
         last_box = None
@@ -219,7 +219,7 @@ class TrackBall(Pipe):
         if save_path and first_frame is not None:
             full_traj_frame = first_frame.copy()
             trajectory.plot_onto(full_traj_frame)
-            cv.imwrite(f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_names[0]}.png", full_traj_frame)
+            cv.imwrite(f"{save_path}/{camera_name}/{Environment.save_name}_{Environment.video_name}.png", full_traj_frame)
 
         if out_video is not None:
             out_video.release()

@@ -15,7 +15,7 @@ class IntrinsicCalibration(Pipe):
     """
 
     def show_results(self):
-        cal_results = DataManager.load(self.save_name)
+        cal_results = DataManager.load(self.save_name, intrinsic=True)
 
         for res in cal_results:
             print(f"\033[96m>>>>> Camera: {res['camera_name']}\033[0m")
@@ -148,7 +148,7 @@ class IntrinsicCalibration(Pipe):
         self.show_results()
 
         # Save results
-        DataManager.save(calibration_results, self.save_name)
+        DataManager.save(calibration_results, self.save_name, intrinsic=True)
 
     @staticmethod
     def __find_checkerboard(img: MatLike, checkerboard_size: Tuple[int, int], criteria: Tuple[int, int, float], visualization: bool):
@@ -190,7 +190,7 @@ class IntrinsicCalibration(Pipe):
         Load calibration results from storage and apply them to Environment views.
         """
 
-        cal_results = DataManager.load(self.save_name)
+        cal_results = DataManager.load(self.save_name, intrinsic=True)
         for res in cal_results:
             view = Environment.get(res["camera_name"])
             view.camera.intrinsic = res["intrinsic"]

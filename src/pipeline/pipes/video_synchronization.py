@@ -47,8 +47,8 @@ class SynchronizeVideo(Pipe):
         view1, view2 = views[0], views[1]
 
         # Compute output paths for saving synchronized videos
-        output1_path = f"{save_path}/{cam1_name}/{Environment.save_name}_{Environment.video_names[0]}"
-        output2_path = f"{save_path}/{cam2_name}/{Environment.save_name}_{Environment.video_names[1]}"
+        output1_path = f"{save_path}/{cam1_name}/{Environment.save_name}_{Environment.video_name}"
+        output2_path = f"{save_path}/{cam2_name}/{Environment.save_name}_{Environment.video_name}"
 
         # Retrieve the video objects
         videos = [view1.video, view2.video]
@@ -108,8 +108,8 @@ class SynchronizeVideo(Pipe):
         view1, view2 = view[0], view[1]
 
         # Compute paths to the saved synchronized videos
-        output1_path = f"{save_path}/{view1.camera.name}/{Environment.save_name}_{Environment.video_names[0]}"
-        output2_path = f"{save_path}/{view2.camera.name}/{Environment.save_name}_{Environment.video_names[1]}"
+        output1_path = f"{save_path}/{view1.camera.name}/{Environment.save_name}_{Environment.video_name}"
+        output2_path = f"{save_path}/{view2.camera.name}/{Environment.save_name}_{Environment.video_name}"
 
         # Show videos side by side
         if visualization:
@@ -268,8 +268,8 @@ class SynchronizeVideo(Pipe):
         folder = save_path.split("/")[-1]
 
         # Build URLs for DashPlayer video components
-        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_names[0]}"
-        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_names[1]}"
+        url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_name}"
+        url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_name}"
 
         # Create DashPlayer instances for each video
         dp1 = dp.DashPlayer(id="player-1", url=url1, controls=True, width="100%", loop=True, playing=True )
