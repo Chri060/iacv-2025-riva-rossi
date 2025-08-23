@@ -1,11 +1,9 @@
 from typing import cast
-
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from dash import dcc, html
-
 from pipeline import plot_utils
 from pipeline.environment import DataManager, Environment, BallTrajectory3d
 from pipeline.pipe import Pipe
@@ -13,14 +11,24 @@ from pipeline.pipe import Pipe
 
 class SpinBall(Pipe):
     """
-    SpinBall is a pipeline stage responsible for estimating bowling ball spin
-    using optical flow on previously tracked ball trajectories.
+    Estimates the spin of a bowling ball along its trajectory using optical flow.
+
+    This pipeline stage:
+        1. Loads 2D ball trajectories from video frames.
+        2. Detects features on the ball surface and computes optical flow.
+        3. Estimates the 3D rotation axis and spin rate (rad/s) per frame.
+        4. Saves spin data and optionally visualizes the spin rate and axes.
     """
 
     def execute(self, params: dict):
         """
-        Estimates ball spin using weighted optical flow on tracked ball regions
-        and plots 2D rotation axis.
+        Computes spin rates and rotation axes for the bowling ball.
+
+        Args:
+            params (dict): Dictionary of parameters including
+                - "graph_save_path" (str): Directory to save plots.
+                - "visualization" (bool, optional): Whether to show interactive visualizations.
+                - Any other visualization or ball-specific parameters.
         """
 
         # Load parameters
@@ -196,16 +204,19 @@ class SpinBall(Pipe):
 
     def load(self, params: dict):
         """
-        Load previously saved spin data.
+        Loads previously computed spin results.
 
         Args:
-            params (dict, optional): Dictionary that may contain flags, e.g., 'visualization' (bool)
+            params (dict): Dictionary containing optional flags such as
+                - "visualization" (bool): Whether to display plots.
 
         Returns:
-            dict: A dictionary with 'spin_results' and 'axis_points'
+            dict: Dictionary containing:
+                - "spin_results": Camera-wise spin rate arrays.
+                - "axis_points": Camera-wise 3D rotation axes per frame.
         """
 
-        # Load and save all needed parameters
+        # Load and save all parameters
         visualization = params.get("visualization", Environment.visualization)
         data = cast(dict, DataManager.load(self.save_name))
         spin_results = data.get("spin_results")
@@ -222,8 +233,16 @@ class SpinBall(Pipe):
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
         """
-        Returns a Dash HTML Div with a 3D plotly visualization of the trajectory,
-        lane, and spin axes. Includes animation of the ball along its trajectory.
+        Returns a Dash HTML Div with a 3D Plotly visualization of the ball trajectory
+        and spin axes along the trajectory.
+
+        Args:
+            params (dict): Dictionary of visualization parameters, e.g.,
+                - "radius" (float, optional): Ball radius in meters.
+
+        Returns:
+            dict[str, html.Div]: Mapping from class name to a Dash Div containing
+                                 the interactive 3D figure.
         """
 
         # Load the previously saved 3D trajectory
@@ -346,12 +365,12 @@ class SpinBall(Pipe):
     @staticmethod
     def plot_angular_speed(spin_results: dict, graph_save_path: str, visualization: bool):
         """
-        Plot ball spin rate over time for each camera, and optionally a combined spin.
+        Plots the ball spin rate over time for each camera.
 
         Args:
-            spin_results (dict): Dictionary mapping camera names to spin rate arrays (rad/frame)
-            graph_save_path (str): Directory path to save plots; empty string means no save
-            visualization (bool): Whether to display plots interactively
+            spin_results (dict): Camera-wise spin rate arrays (rad/frame).
+            graph_save_path (str): Directory to save the plot; empty string means no save.
+            visualization (bool): Whether to display the plot interactively.
         """
 
         plt.figure(figsize=(10, 6))
@@ -379,13 +398,13 @@ class SpinBall(Pipe):
     @staticmethod
     def plot_axes(params: dict, axis_points: dict, graph_save_path: str, visualization: bool):
         """
-        Visualize 3D rotation axes of the ball along its trajectory.
+        Plots the 3D rotation axes of the ball along its trajectory.
 
         Args:
-            params (dict): Dictionary that may contain visualization parameters (e.g., 'ball_radius')
-            axis_points (dict): Dictionary mapping camera names to list of 3D rotation axes per frame
-            graph_save_path (str): Directory path to save plots; empty string means no save
-            visualization (bool): Whether to display plots interactively
+            params (dict): Dictionary with optional visualization parameters (e.g., 'ball_radius').
+            axis_points (dict): Camera-wise 3D rotation axes per frame.
+            graph_save_path (str): Directory to save the plots; empty string means no save.
+            visualization (bool): Whether to display the plots interactively.
         """
 
         fig = plt.figure()
@@ -393,7 +412,7 @@ class SpinBall(Pipe):
         ax.set_title("Ball Spin Axes : 3D Visualization")
 
         plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
-        plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
+        plot_utils.trajectory(ax, cast(BallTrajectory3d, Environment.get("3D_trajectory")))
 
         ball_diameter = params.get("ball_radius", 0.1091) * 2
         trajectory_3d = Environment.get("3D_trajectory")

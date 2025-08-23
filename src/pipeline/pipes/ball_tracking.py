@@ -12,13 +12,23 @@ from pipeline.pipe import Pipe
 
 class TrackBall(Pipe):
     """
-    TrackBall is a pipeline stage responsible for loading, tracking, and optionally visualizing
-    ball trajectories from videos. Supports Dash integration for web-based visualization.
+    Tracks a bowling ball in video frames using YOLO object detection.
+
+    This pipeline stage:
+        1. Tracks the ball in each camera view.
+        2. Saves the 2D trajectories for later pipeline stages.
+        3. Optionally visualizes the tracking in real time.
+        4. Supports side-by-side video visualization in Dash.
     """
 
     def execute(self, params: dict):
         """
-        Executes ball tracking using YOLO and saves the trajectories.
+        Tracks the ball in all camera views and saves the resulting trajectories.
+
+        Args:
+            params (dict): Dictionary containing:
+                - "save_path" (str): Directory to save tracking results.
+                - "visualization" (bool, optional): Whether to display tracking frames.
         """
 
         # Load the variables
@@ -43,7 +53,11 @@ class TrackBall(Pipe):
 
     def load(self, params: dict):
         """
-        Loads previously tracked ball trajectories from storage.
+        Loads previously tracked ball trajectories.
+
+        Args:
+            params (dict): Dictionary containing optional parameters:
+                - "visualization" (bool): Whether to display video frames with tracked trajectory.
         """
 
         # Visualization
@@ -89,14 +103,20 @@ class TrackBall(Pipe):
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
         """
-        Creates a Dash page to visualize tracked ball videos side by side.
+        Returns a Dash HTML Div containing side-by-side video players
+        showing the tracked ball videos.
+
+        Args:
+            params (dict): Dictionary containing:
+                - "save_path" (str): Directory where videos are stored for playback.
+
+        Returns:
+            dict[str, html.Div]: Mapping from class name to a Dash Div containing
+                                 the interactive video players.
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
+        # Load the parameters
+        save_path = params["save_path"]
 
         # Get first two views from Environment
         view1, view2 = Environment.get_views()[:2]
@@ -106,16 +126,35 @@ class TrackBall(Pipe):
         url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_name}"
         url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_name}"
 
-        # Create DashPlayer components for each video
-        dp1 = dp.DashPlayer(id="player-1", url=url1, controls=True, width="100%", loop=True, playing=True)
-        dp2 = dp.DashPlayer(id="player-2", url=url2, controls=True, width="100%", loop=True, playing=True)
-
         # Create HTML container for side-by-side layout
         page = html.Div(
             children=[
-                html.Div(children=dp1, style={"height": "auto", "width": "49%", "display": "inline-block"}),
-                html.Div(children=dp2, style={"height": "auto", "width": "49%", "display": "inline-block"})
-            ]
+                dp.DashPlayer(
+                    id="player-1",
+                    url=url1,
+                    controls=True,
+                    width="100%",
+                    height="100%",
+                    loop=True,
+                    playing=True,
+                    style={"objectFit": "cover"}  # fill container, crop if needed
+                ),
+                dp.DashPlayer(
+                    id="player-2",
+                    url=url2,
+                    controls=True,
+                    width="100%",
+                    height="100%",
+                    loop=True,
+                    playing=True,
+                    style={"objectFit": "cover"}
+                )
+            ],
+            style={
+                "display": "flex",
+                "flexDirection": "row",
+                "height": "90vh"  # total available height
+            }
         )
 
         return {self.__class__.__name__: page}
@@ -123,7 +162,18 @@ class TrackBall(Pipe):
     @staticmethod
     def track_ball(model, video, visualization, save_path, camera_name) -> BallTrajectory2d:
         """
-        Tracks the ball in a video using YOLO, returning a 2D trajectory and saving a video of the tracking.
+        Tracks a single ball in a video using YOLO detection and generates a 2D trajectory.
+
+        Args:
+            model: YOLO detection model instance.
+            video: Video object containing a capture of frames.
+            visualization (bool): Whether to display tracking frames in real time.
+            save_path (str): Directory to save annotated tracking video and trajectory image.
+            camera_name (str): Name of the camera (used for file naming).
+
+        Returns:
+            BallTrajectory2d: A 2D trajectory object containing the ball positions and radii
+                              for all frames, interpolated where detections are missing.
         """
 
         # Reset video to the first frame
@@ -140,7 +190,7 @@ class TrackBall(Pipe):
         out_video = None
         if save_path:
             out_path = f"{save_path.replace("images", "videos")}/{camera_name}/{Environment.save_name}_{Environment.video_name}"
-            out_video = cv.VideoWriter(out_path, cv.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
+            out_video = cv.VideoWriter(out_path, cv.VideoWriter_fourcc(*'H264'), fps, (width, height))
 
         last_box = None
         frame_idx = 0

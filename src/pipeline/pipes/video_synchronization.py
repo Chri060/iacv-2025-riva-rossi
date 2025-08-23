@@ -12,17 +12,24 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 class SynchronizeVideo(Pipe):
     """
-    Class to synchronize two video streams based on their audio tracks.
+    Synchronizes two video streams using their audio tracks.
+
+    This pipeline stage:
+        1. Computes the time offset between two videos by cross-correlating audio.
+        2. Applies the calculated shift to produce synchronized video streams.
+        3. Updates the Environment with the synchronized Video objects.
+        4. Optionally visualizes synchronization side by side in OpenCV.
+        5. Supports side-by-side Dash video visualization for web display.
     """
 
     def execute(self, params: dict):
         """
-        Main method to execute the video synchronization process.
+        Executes the video synchronization process.
 
-        Parameters:
-            params (dict): Dictionary containing required and optional parameters:
-                - "save_path": path to save the synchronized videos (required)
-                - "visualization": whether to visualize synchronization (optional)
+        Args:
+            params (dict): Dictionary containing parameters:
+                save_path (str): Path to save the synchronized videos. Required.
+                visualization (bool, optional): Whether to visualize synchronization. Defaults to Environment.visualization.
         """
 
         # Save path
@@ -87,13 +94,13 @@ class SynchronizeVideo(Pipe):
 
     def load(self, params: dict):
         """
-       Load and optionally visualize synchronized videos.
+        Loads and optionally visualizes previously synchronized videos.
 
-       Parameters:
-           params (dict): Dictionary containing required and optional parameters:
-               - "save_path": path where videos are saved (required)
-               - "visualization": whether to show videos side by side (optional)
-       """
+        Args:
+            params (dict): Dictionary containing parameters:
+                save_path (str): Path where synchronized videos are saved. Required.
+                visualization (bool, optional): Whether to show videos side by side. Defaults to Environment.visualization.
+        """
 
         # Save path
         try:
@@ -138,20 +145,17 @@ class SynchronizeVideo(Pipe):
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
         """
-        Generate a Dash page with synchronized video players.
+        Generates a Dash page displaying the synchronized videos side by side.
 
-        Parameters:
-            params (dict): Dictionary containing required parameters, e.g., "save_path"
+        Args:
+            params (dict): Dictionary containing parameters:
+                save_path (str): Path where synchronized videos are saved.
 
         Returns:
-            dict: Mapping of the class name to the Dash HTML page
+            dict[str, html.Div]: Mapping of class name to the Dash HTML page containing video players.
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
+        save_path = params["save_path"]
 
         # Get the two views for display
         view = Environment.get_views()
@@ -164,16 +168,35 @@ class SynchronizeVideo(Pipe):
         url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_name}"
         url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_name}"
 
-        # Create DashPlayer instances for each video
-        dp1 = dp.DashPlayer(id="player-1", url=url1, controls=True, width="100%", loop=True, playing=True)
-        dp2 = dp.DashPlayer(id="player-2", url=url2, controls=True, width="100%", loop=True, playing=True)
-
         # Arrange players side by side in a single Div
         page = html.Div(
             children=[
-                html.Div(children=dp1, style={"height": "auto", "width": "49%", "display": "inline-block"}),
-                html.Div(children=dp2, style={"height": "auto", "width": "49%", "display": "inline-block"}),
-            ]
+                dp.DashPlayer(
+                    id="player-1",
+                    url=url1,
+                    controls=True,
+                    width="100%",
+                    height="100%",
+                    loop=True,
+                    playing=True,
+                    style={"objectFit": "cover"}
+                ),
+                dp.DashPlayer(
+                    id="player-2",
+                    url=url2,
+                    controls=True,
+                    width="100%",
+                    height="100%",
+                    loop=True,
+                    playing=True,
+                    style={"objectFit": "cover"}
+                )
+            ],
+            style={
+                "display": "flex",
+                "flexDirection": "row",
+                "height": "90vh"
+            }
         )
 
         return {self.__class__.__name__: page}
@@ -181,15 +204,15 @@ class SynchronizeVideo(Pipe):
     @staticmethod
     def get_time_shift(video1_path: str, video2_path: str) -> float:
         """
-       Compute the time offset between two videos using their audio tracks.
+        Computes the time offset between two videos using their audio tracks.
 
-       Parameters:
-           video1_path (str): Path to first video
-           video2_path (str): Path to second video
+        Args:
+            video1_path (str): Path to the first video.
+            video2_path (str): Path to the second video.
 
-       Returns:
-           float: Time shift in seconds; positive if video1 is ahead of video2
-       """
+        Returns:
+            float: The time-shift in seconds. Positive if video1 is ahead of video2.
+        """
         try:
             # Load audio from videos
             audio1, sr1 = librosa.load(video1_path, sr=None, mono=True)
@@ -223,22 +246,22 @@ class SynchronizeVideo(Pipe):
     def apply_shift(videos: list[Video], output_path1: str, output_path2: str, target_fps: float,
                     target_duration: float, start1: float, start2: float, visualization: bool):
         """
-        Apply time shift to videos and save the synchronized versions.
+        Applies time shift to videos and saves the synchronized versions.
 
-        Parameters:
-            videos (list[Video]): List of two video objects
-            output_path1 (str): Path to save first synchronized video
-            output_path2 (str): Path to save second synchronized video
-            target_fps (float): FPS of output videos
-            target_duration (float): Duration of output videos
-            start1 (float): Start time offset for video1
-            start2 (float): Start time offset for video2
-            visualization (bool): Whether to visualize the synchronization process
+        Args:
+            videos (list[Video]): List of two Video objects to synchronize.
+            output_path1 (str): Path to save the first synchronized video.
+            output_path2 (str): Path to save the second synchronized video.
+            target_fps (float): Frame rate for output videos.
+            target_duration (float): Duration for output videos in seconds.
+            start1 (float): Start time offset for the first video in seconds.
+            start2 (float): Start time offset for the second video in seconds.
+            visualization (bool): Whether to visualize the synchronization process in OpenCV.
         """
 
         # Initialize video writers
-        fourcc1 = cv.VideoWriter_fourcc(*"mp4v")
-        fourcc2 = cv.VideoWriter_fourcc(*"mp4v")
+        fourcc1 = cv.VideoWriter_fourcc(*"H264")
+        fourcc2 = cv.VideoWriter_fourcc(*"H264")
 
         # Get width and height of both videos
         _, _, width_height1 = videos[0].get_video_properties()

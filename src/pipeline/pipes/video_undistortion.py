@@ -12,17 +12,26 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 class UndistortVideo(Pipe):
     """
-    A pipeline step that undistorts videos using known camera calibration parameters.
+    Undistorts videos using camera intrinsic and distortion parameters.
+
+    This pipeline stage:
+        1. Reads all videos from the Environment.
+        2. Applies undistortion to each frame using known calibration parameters.
+        3. Saves the undistorted videos to the specified path.
+        4. Updates the Environment with the new undistorted Video objects.
+        5. Optionally visualizes undistorted frames in real-time via OpenCV.
+        6. Supports side-by-side Dash video visualization for web display.
     """
 
     def execute(self, params: dict):
         """
-        Execute the undistortion process on all videos in the environment.
+        Executes undistortion on all videos in the environment.
 
-        Parameters:
-            params (dict):
-                save_path (str): Directory to save undistorted videos
-                visualization (bool, optional): Whether to visualize while processing
+        Args:
+            params (dict): Dictionary containing:
+                save_path (str): Directory to save undistorted videos. Required.
+                visualization (bool, optional): Whether to visualize frames during processing.
+                    Defaults to Environment.visualization.
         """
 
         # Save path
@@ -47,7 +56,7 @@ class UndistortVideo(Pipe):
             output_path = f"{save_path}/{cam.name}/{Environment.save_name}_{Environment.video_name}"
 
             # Prepare the video writer
-            fourcc = cv.VideoWriter_fourcc(*"mp4v")
+            fourcc = cv.VideoWriter_fourcc(*"H264")
             out = cv.VideoWriter(output_path, fourcc, fps, width_height)
 
             # Compute optimal intrinsic matrix (removes black borders)
@@ -85,25 +94,20 @@ class UndistortVideo(Pipe):
 
     def load(self, params: dict):
         """
-        Load previously undistorted videos into the environment.
+        Loads previously undistorted videos into the environment.
 
-        Parameters:
-            params (dict):
-                save_path (str): Directory of saved undistorted videos
-                visualization (bool, optional): Whether to visualize after loading
+        Optionally displays the videos side by side using OpenCV.
+
+        Args:
+            params (dict): Dictionary containing:
+                save_path (str): Directory of saved undistorted videos. Required.
+                visualization (bool, optional): Whether to visualize after loading.
+                    Defaults to Environment.visualization.
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-
-        # Visualization
-        try:
-            visualization = params["visualization"]
-        except Exception as _:
-            visualization = Environment.visualization
+        # Load the parameters
+        save_path = params["save_path"]
+        visualization = params["visualization"]
 
         paths = []
 
@@ -137,15 +141,15 @@ class UndistortVideo(Pipe):
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
         """
-       Build a Dash/Plotly page to visualize undistorted videos side by side in the browser.
+        Generates a Dash page displaying undistorted videos side by side.
 
-       Parameters:
-           params (dict):
-               save_path (str): Directory containing undistorted videos
+        Args:
+            params (dict): Dictionary containing:
+                save_path (str): Directory containing undistorted videos. Required.
 
-       Returns:
-           dict[str, html.Div]: Page layout for Dash
-       """
+        Returns:
+            dict[str, html.Div]: Mapping of class name to the Dash HTML page containing video players.
+        """
 
         # Save path
         try:
@@ -164,16 +168,35 @@ class UndistortVideo(Pipe):
         url1 = f"/video/{folder}/{view1.camera.name}/{Environment.save_name}_{Environment.video_name}"
         url2 = f"/video/{folder}/{view2.camera.name}/{Environment.save_name}_{Environment.video_name}"
 
-        # Dash video players
-        dp1 = dp.DashPlayer(id="player-1", url=url1, controls=True, width="100%", loop=True, playing=True)
-        dp2 = dp.DashPlayer(id="player-2", url=url2, controls=True, width="100%", loop=True, playing=True)
-
         # Layout side by side
         page = html.Div(
             children=[
-                html.Div(children=dp1, style={"height": "auto", "width": "49%", "display": "inline-block"}),
-                html.Div(children=dp2, style={"height": "auto", "width": "49%", "display": "inline-block"})
-            ]
+                dp.DashPlayer(
+                    id="player-1",
+                    url=url1,
+                    controls=True,
+                    width="100%",
+                    height="100%",
+                    loop=True,
+                    playing=True,
+                    style={"objectFit": "cover"}  # fill container, crop if needed
+                ),
+                dp.DashPlayer(
+                    id="player-2",
+                    url=url2,
+                    controls=True,
+                    width="100%",
+                    height="100%",
+                    loop=True,
+                    playing=True,
+                    style={"objectFit": "cover"}
+                )
+            ],
+            style={
+                "display": "flex",
+                "flexDirection": "row",
+                "height": "90vh"  # total available height
+            }
         )
 
         return {self.__class__.__name__: page}

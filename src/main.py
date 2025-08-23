@@ -1,10 +1,17 @@
 import os, sys, yaml
 from pipeline.environment import Environment
 
+
 def main():
     """
-    Main entry point for running the pipeline.
-    This script loads a configuration file, initializes global settings in the Environment, and starts the pipeline defined in the configuration.
+    The main entry point for running the pipeline.
+
+    This function handles the selection and loading of a configuration file,
+    initializes global settings in the Environment, and starts the pipeline
+    as defined in the configuration.
+
+    Args:
+        None. Command-line arguments are read via the command line.
     """
 
     # Select the configuration file
@@ -27,6 +34,7 @@ def main():
 
     # Start pipeline steps defined in config
     Environment.start_pipeline(configs["pipeline"])
+
 
 if __name__ == "__main__":
     main()

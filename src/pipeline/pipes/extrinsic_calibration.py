@@ -13,17 +13,26 @@ from pipeline.pipe import Pipe
 
 class ExtrinsicCalibration(Pipe):
     """
-    This class performs extrinsic camera calibration.
-    It estimates each camera's position and orientation in the world coordinate system
-    using 3D-2D point correspondences and PnP (Perspective-n-Point).
+    Estimates camera positions and orientations in the world coordinate system.
+
+    This pipeline stage:
+        1. Loads 3D world coordinates of the bowling lane corners.
+        2. Computes rotation and translation for each camera using 2D-3D correspondences and PnP.
+        3. Converts rotation vectors to rotation matrices and computes camera positions.
+        4. Updates each camera's extrinsic matrix, position, and orientation in the Environment.
+        5. Optionally visualizes the calibration with Matplotlib 3D plots.
+        6. Saves the calibration results via DataManager.
+        7. Provides a Plotly Dash page for interactive 3D visualization of cameras and the bowling lane.
     """
 
     def execute(self, params: dict):
         """
-        Main execution method:
-        - Computes extrinsic parameters (rotation, translation) for all views
-        - Updates Environment cameras
-        - Optionally visualizes the results
+        Computes extrinsic parameters for all cameras and saves the results.
+
+        Args:
+            params (dict): Dictionary containing:
+                - "save_path" (str): Path to save calibration results and figures.
+                - "visualization" (bool, optional): Whether to show Matplotlib 3D plot.
         """
 
         # Load parameters
@@ -84,25 +93,15 @@ class ExtrinsicCalibration(Pipe):
         plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
 
         # Draw world reference axes
-        plot_utils.reference_frame(
-            ax,
-            [0, 0, 0],
-            [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-            label="World reference frame",
-            line_color="cyan"
-        )
+        plot_utils.reference_frame(ax, [0, 0, 0], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], label="World reference frame",
+                                   line_color="cyan")
 
         # Draw cameras in 3D space
         for view in Environment.get_views():
             plot_utils.camera(ax, view.camera)
 
         # Define views: (elev, azim)
-        views = {
-            "front": (20, 0),
-            "back": (20, 180),
-            "top": (90, -90),
-            "side": (0, 90)
-        }
+        views = {"front": (20, 0), "back": (20, 180), "top": (90, -90), "side": (0, 90)}
 
         # Save each view without showing
         for name, (elev, azim) in views.items():
@@ -115,16 +114,15 @@ class ExtrinsicCalibration(Pipe):
 
     def load(self, params: dict):
         """
-        Loads extrinsic calibration results from storage,
-        applies them to Environment cameras, and optionally visualizes.
+        Loads previously computed extrinsic calibration results.
+
+        Args:
+            params (dict): Dictionary with optional:
+                - "visualization" (bool): Whether to show Matplotlib 3D plot.
         """
 
-        try:
-            visualization = params.get("visualization", Environment.visualization)
-        except AttributeError as _:
-            visualization = Environment.visualization
-
-        # Load saved calibration
+        # Load the parameters
+        visualization = params.get("visualization", Environment.visualization)
         ext_calibration_results = cast(dict, DataManager.load(self.save_name))
 
         # Restore camera parameters
@@ -142,10 +140,14 @@ class ExtrinsicCalibration(Pipe):
 
     def plotly_page(self, _):
         """
-        Creates a Plotly 3D visualization page:
-        - Bowling lane mesh
-        - Camera cones showing position and orientation
-        - Pit highlighted in red
+        Returns a Plotly 3D visualization page showing:
+        - Bowling lane as a mesh
+        - Cameras as cones indicating orientation
+        - Pit as a highlighted red segment
+
+        Returns:
+            dict[str, html.Div]: Mapping from class name to a Dash HTML Div
+                                 containing the 3D interactive visualization.
         """
 
         ext_calibration_results = cast(dict, DataManager.load(self.save_name))
@@ -201,10 +203,11 @@ class ExtrinsicCalibration(Pipe):
     @staticmethod
     def visualize():
         """
-        Generates a 3D Matplotlib plot showing:
+        Generates a Matplotlib 3D visualization of the calibration:
         - Bowling lane
-        - World reference frame
-        - All calibrated cameras (position and orientation)
+        - World reference frame axes
+        - All calibrated cameras with position and orientation
+        Blocks execution until the plot window is closed.
         """
 
         ax = plot_utils.get_3d_plot("Camera placement : 3D Visualization")

@@ -11,14 +11,28 @@ from pipeline.pipe import Pipe
 
 class IntrinsicCalibration(Pipe):
     """
-    This class performs intrinsic camera calibration using images or video frames
-    of a checkerboard pattern. The calibration estimates the intrinsic parameters
-    (camera matrix) and distortion coefficients for each camera defined in Environment.
+    Performs intrinsic camera calibration using checkerboard images or video frames.
+
+    This pipeline stage:
+        1. Loads checkerboard images and video frames for each camera.
+        2. Detects and refines checkerboard corners for sub-pixel accuracy.
+        3. Computes intrinsic camera matrices and distortion coefficients.
+        4. Updates Environment cameras with calibration results.
+        5. Optionally visualizes checkerboard detections during calibration.
+        6. Saves calibration results via DataManager.
     """
 
     def execute(self, params: dict):
         """
-        Main execution method: loops through cameras and performs intrinsic calibration.
+        Executes intrinsic calibration for all cameras in the Environment.
+
+        Args:
+            params (dict): Configuration parameters containing:
+                images_path (str): Path to images and videos for calibration.
+                visualization (bool, optional): Whether to visualize checkerboard detection.
+                    Defaults to Environment.visualization.
+                checkerboard_sizes (list[list[int]], optional): Checkerboard sizes for each camera.
+                    Defaults to [[9, 6], [9, 6]].
         """
 
         # Load parameters
@@ -114,9 +128,8 @@ class IntrinsicCalibration(Pipe):
 
     def load(self):
         """
-        Load calibration results from storage and apply them to Environment views.
+        Loads saved intrinsic calibration results from DataManager.
         """
-
         cal_results = cast(Iterable, DataManager.load(self.save_name, intrinsic=True))
 
         for res in cal_results:
@@ -128,13 +141,24 @@ class IntrinsicCalibration(Pipe):
 
     def plotly_page(self, params: dict):
         """
-        No plotly implementation.
+        Placeholder for a Plotly visualization page. Not implemented.
         """
 
         return None
 
     @staticmethod
     def show_results(cal_results: Iterable):
+        """
+        Prints intrinsic matrices and distortion coefficients for each camera.
+
+        Args:
+            cal_results (Iterable[dict]): Iterable of calibration result dictionaries.
+                Each dictionary contains:
+                    camera_name (str): Camera identifier.
+                    intrinsic (np.ndarray): Intrinsic camera matrix.
+                    distortion (np.ndarray): Distortion coefficients.
+        """
+
         for res in cal_results:
             print(f"\033[96m>>>>> Camera: {res['camera_name']}\033[0m")
             print("Intrinsic matrix:")
@@ -151,8 +175,16 @@ class IntrinsicCalibration(Pipe):
     def find_checkerboard(img: MatLike, checkerboard_size: Tuple[int, int], criteria: Tuple[int, int, float],
                           visualization: bool):
         """
-        Detects a checkerboard in an image, refines corner detection,
-        and optionally visualizes the result.
+        Detects a checkerboard in an image and refines corner positions.
+
+        Args:
+            img (MatLike): Input BGR image.
+            checkerboard_size (Tuple[int, int]): Number of inner corners per row and column (cols, rows).
+            criteria (Tuple[int, int, float]): Termination criteria for sub-pixel refinement.
+            visualization (bool): If True, displays the image with detected corners.
+
+        Returns:
+            np.ndarray | None: Refined corner positions if detected; otherwise None.
         """
 
         # Convert to grayscale

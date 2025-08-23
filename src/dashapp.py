@@ -1,6 +1,6 @@
 import os, sys, dash, yaml
 from dash import Dash, Input, Output, html
-from flask import send_from_directory
+from flask import send_file
 from pipeline.environment import Environment
 from pipeline.pipes.intrinsic_calibration import IntrinsicCalibration
 from pipeline.pipes.extrinsic_calibration import ExtrinsicCalibration
@@ -17,16 +17,39 @@ STATIC_DIR = f"{os.getcwd()}/resources"
 # Initialize Dash app
 app = Dash()
 
-# Route to serve video files from the videos directory
+
 @app.server.route("/video/<path:video_path>")
-def serve_video(video_path):
-    video_folder = f"{STATIC_DIR}/videos"
-    return send_from_directory(video_folder, video_path, mimetype="video/mp4")
+def serve_video(video_path: str):
+    """
+    Serve a video file from the server's static directory.
+
+    This endpoint takes a video path relative to the server's "videos" folder
+    inside the STATIC_DIR, verifies that the file exists, and returns it
+    as an HTTP response with the correct MIME type. Supports conditional
+    requests for efficient streaming.
+
+    Args:
+        video_path (str): Relative path to the video file under the "videos"
+            directory in STATIC_DIR.
+
+    Returns:
+        Response: A Flask response object containing the video file if found.
+    """
+
+    # Define the path
+    full_path = os.path.join(STATIC_DIR, "videos", video_path)
+
+    return send_file(full_path, mimetype="video/mp4", conditional=True)
+
 
 def main():
     """
-    This module creates an interactive Dash web application that provides visualization.
+    The main entry point for creating and running the interactive Dash visualization app.
+
+    Args:
+        None. Command-line arguments are used for configuration selection.
     """
+
     # Determine config the file path from command-line argument or default
     if len(sys.argv) == 1:
         config_path = "./config/dev.yml"
@@ -91,9 +114,8 @@ def main():
     # Callback to handle button clicks and update the displayed page
     @app.callback(
         [Output("title", "children"), Output("page", "children")],
-        [Input(name, "n_clicks") for name in pages.keys()],  # triggers when whenever one of the input changes
+        [Input(name, "n_clicks") for name in pages.keys()],
     )
-
     def update_output(*args):
         # Determine which button triggered the callback
         ctx = dash.callback_context
@@ -101,12 +123,13 @@ def main():
             # Default: show welcome page
             return title_text + welcome_page_name, welcome_page
         else:
-            button_id = ctx.triggered[0]["prop_id"].split(".")[0]  # Extract button id
-            # Update title and page content
+            button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
             return title_text + button_id, pages[button_id]
 
     # Run the Dash server
     app.run(debug=False)
+
 
 if __name__ == "__main__":
     main()

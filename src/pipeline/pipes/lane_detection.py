@@ -9,23 +9,29 @@ from pipeline.pipe import Pipe
 
 class DetectLane(Pipe):
     """
-        DetectLane is a pipeline stage responsible for detecting and storing lane corner points
-        in each camera view. The detection relies on manual point selection, where the user
-        clicks on lane corners within sampled frames from the input videos.
+    Detects and stores lane corner points in camera views using manual point selection.
+
+    This pipeline stage:
+        1. Reads the middle frame of each camera video.
+        2. Allows the user to manually click on lane corners.
+        3. Stores the selected corner coordinates in the Environment.
+        4. Optionally visualizes the detected corners on the video frames.
+        5. Saves all detection results using DataManager.
     """
 
     def execute(self, params: dict):
         """
         Executes lane detection for all camera views.
-        For each camera:
-          - Reads the middle frame of the video.
-          - Allows manual selection of lane corners.
-          - Stores the selected corners.
+
+        For each camera reads the middle frame of the video, allows manual selection of lane corners,
+        and stores the selected corners in the Environment.
         Finally, saves all detection results using DataManager.
 
         Args:
-            params (dict): Dictionary that may contain the 'scale' key for image scaling
-                           during manual point selection (default: [0.7, 0.7]).
+            params (dict): Configuration dictionary. Can contain:
+                save_path (str): Directory where annotated frames will be saved.
+                scale (float | list[float], optional): Scaling factor(s) for display during manual selection.
+                    Defaults to [0.7, 0.7].
         """
 
         # Load parameters
@@ -64,8 +70,14 @@ class DetectLane(Pipe):
     def load(self, params: dict):
         """
         Loads previously detected lane corner points.
+
         If visualization is enabled, draws the points on the middle frame of each video
         and displays stacked side-by-side frames.
+
+        Args:
+            params (dict): Configuration dictionary. Can contain:
+                visualization (bool, optional): Whether to visualize the loaded points.
+                    Defaults to Environment.visualization.
         """
 
         # Load parameters
@@ -111,7 +123,7 @@ class DetectLane(Pipe):
 
     def plotly_page(self, params: dict):
         """
-        No plotly implementation.
+        Placeholder for a Plotly visualization page. Not implemented.
         """
 
         return None
@@ -120,7 +132,18 @@ class DetectLane(Pipe):
     def manual_point_selection(image: MatLike, save_path: str, camera_name: str, scale: float = 0.5):
         """
         Allows the user to manually select points on an image using mouse clicks.
-        Points are scaled back to original image coordinates and returned as a list.
+
+        Selected points are scaled back to original image coordinates and returned as a list.
+
+        Args:
+            image (MatLike): Input BGR image.
+            save_path (str): Directory to save the annotated image.
+            camera_name (str): Name of the camera (used for filename).
+            scale (float, optional): Scale factor for display during selection. Defaults to 0.5.
+
+        Returns:
+            list[list[float]] | None: List of selected points as [x, y] in original image coordinates.
+                Returns None if no points are selected.
         """
 
         selected_points = []

@@ -1,5 +1,4 @@
 from typing import cast
-
 import cv2 as cv
 import numpy as np
 import plotly.graph_objects as go
@@ -13,14 +12,27 @@ from pipeline.pipe import Pipe
 
 class LocalizeBall(Pipe):
     """
-    Class to localize a bowling ball in 3D space using stereo camera views.
+    Localizes a bowling ball in 3D space using stereo camera views.
+
+    This pipeline step:
+        1. Triangulates the 3D ball position from 2D trajectories in two camera views.
+        2. Filters points to keep only those over the bowling lane.
+        3. Smooths the trajectory using spline interpolation.
+        4. Saves the 3D trajectory and optionally visualizes it using matplotlib and Plotly.
     """
 
     def execute(self, params: dict):
         """
-        Main execution method that computes the 3D trajectory of the ball.
+        Executes the ball localization pipeline.
+
+        Args:
+            params (dict): Dictionary containing configuration parameters such as
+                - "save_path" (str): Path to save plots.
+                - "ball_radius" (float, optional): Radius of the bowling ball in meters.
+                - "visualization" (bool, optional): Whether to display plots interactively.
         """
 
+        # Load the parameters
         save_path = params["save_path"]
         visualization = params.get("visualization", Environment.visualization)
         views = Environment.get_views()
@@ -98,7 +110,7 @@ class LocalizeBall(Pipe):
 
         # Plot lane and trajectory
         plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
-        plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
+        plot_utils.trajectory(ax, cast(BallTrajectory3d, Environment.get("3D_trajectory")))
 
         # Define views: (elev, azim)
         views = {"back": (20, 180), "top": (90, -90), "side": (0, 90), "front": (20, 0)}
@@ -114,6 +126,13 @@ class LocalizeBall(Pipe):
         input("\033[92mPress Enter to continue...\033[0m")
 
     def load(self, params: dict):
+        """
+        Loads a previously saved 3D ball trajectory and optionally visualizes it.
+
+        Args:
+            params (dict): Dictionary containing visualization parameters, e.g.,
+                - "visualization" (bool, optional): Whether to show the trajectory.
+        """
 
         # Load the parameters
         trajectory_3d = DataManager.load(self.save_name)
@@ -123,15 +142,22 @@ class LocalizeBall(Pipe):
         if visualization:
             ax = plot_utils.get_3d_plot("Ball Localization : 3D Visualization")
             plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
-            plot_utils.trajectory(ax, Environment.get("3D_trajectory"))
+            plot_utils.trajectory(ax, cast(BallTrajectory3d, Environment.get("3D_trajectory")))
             plt.show(block=True)
 
         input("\033[92mPress Enter to continue...\033[0m")
 
     def plotly_page(self, params: dict) -> dict[str, html.Div]:
         """
-        Returns a Dash HTML Div with a 3D plotly visualization of the trajectory and lane.
-        Includes animation of the ball along its trajectory.
+        Creates a Plotly Dash page with a 3D visualization of the ball trajectory and bowling lane.
+
+        Args:
+            params (dict): Dictionary containing visualization parameters, such as
+                - "radius" (float, optional): Radius of the bowling ball in meters.
+
+        Returns:
+            dict[str, html.Div]: Mapping from the class name to a Dash HTML Div containing
+                                 a 3D figure with the bowling lane and animated ball trajectory.
         """
 
         # Load the previously saved 3D trajectory

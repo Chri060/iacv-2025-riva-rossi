@@ -7,37 +7,37 @@ Before running the application, you need to install the required dependencies an
 First, install all Python dependencies from the requirements.txt file:
 
 ```bash
-   pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 FFmpeg is required for video processing and audio synchronization.
 Install it based on your operating system:
 
 ```bash
-   # Linux
-   sudo apt update 
-   sudo apt install ffmpeg
-   
-   # MacOS
-   brew install ffmpeg
-   
-   # Windows
-   choco install ffmpeg
+# Linux
+sudo apt update 
+sudo apt install ffmpeg
+
+# MacOS
+brew install ffmpeg
+
+# Windows
+choco install ffmpeg
 ```
 
 OpenH264 is required for video encoding/decoding.
 Install it based on your operating system:
 
 ```bash
-   # Linux
-   wget https://github.com/cisco/openh264/releases/download/v2.3.1/libopenh264-2.3.1-linux64.7z
-   7z x libopenh264-2.3.1-linux64.7z
-   sudo cp libopenh264-2.3.1-linux64/libopenh264.so.2 /usr/lib/
-   
-   # MacOS
-   brew install openh264
-   
-   # Windows: download from the website
+# Linux
+wget https://github.com/cisco/openh264/releases/download/v2.3.1/libopenh264-2.3.1-linux64.7z
+7z x libopenh264-2.3.1-linux64.7z
+sudo cp libopenh264-2.3.1-linux64/libopenh264.so.2 /usr/lib/
+
+# MacOS
+brew install openh264
+
+# Windows: download from the website
 ```
 
 ### Run the program
@@ -46,7 +46,17 @@ To start the bowling ball tracking pipeline, run the main Python script with the
 argument:
 
 ```bash
-   python3 main.py ./config/dev.yml
+python3 main.py ./config/dev.yml
+```
+
+### Run the dashboard
+
+To start the bowling ball tracking dashboard, run the dashapp Python script with the path to your configuration file as
+an
+argument:
+
+```bash
+python3 dashapp.py ./config/dev.yml
 ```
 
 ## Configuration file
@@ -65,10 +75,10 @@ Each part is explained in detail in the following part.
 save_name: default
 ```
 
-The pipeline save name.
-All components from the pipeline package have the ability to execute their code and store its results, or to load them
+The pipeline saves name.
+All components from the pipeline package can execute their code and store its results, or to load them
 by skipping execution.
-This name will be used to retrieve past computations that used the same savename.
+This name will be used to retrieve past computations that used the same save name.
 
 ### Global
 
@@ -87,7 +97,7 @@ global:
 Some necessary global configuration options specifying the videos to analyze, camera names, paths and known coordinates:
 
 - video_name: the name of the original stereo videos we are referring to
-- camera_names: the names of the cameras we are using (for visualization and organization purposes)
+- camera_names: the names of the cameras we are using (for visualization and organization)
 - paths: the global paths that we need in our code
     - originals: ath to original videos
 - coords: set of known configurable coordinates
@@ -119,7 +129,7 @@ The pipeline consists of the following operations:
    - name: intrinsic
      type: _
      params: {
-       images_path: "resources/calibration"           # Calibration images path
+       images_path: "resources/calibration"                # The path to calibration images
      }
      ```
 2. _Video synchronization_: two video sources are synchronized using audio correlation techniques to ensure temporal
@@ -128,7 +138,7 @@ The pipeline consists of the following operations:
     - name: video_synchronization
       type: _
       params: {
-        save_path: "resources/videos/sync"            # Synchronized video save folder
+        save_path: "resources/videos/sync"                 # The path to the video save folder
       }
      ```
 3. _Video undistortion_: lens distortions are corrected using the previously computed intrinsic parameters, providing a
@@ -137,7 +147,7 @@ The pipeline consists of the following operations:
        - name: video_undistortion
          type: _
          params: {
-           save_path: "resources/videos/undistorted"  # Undistorted video save folder
+           save_path: "resources/videos/undistorted"       # The path to the video save folder
          }
     ```
 4. _Lane detection_: the lane edges are manually identified to establish a reference frame for the ball localization
@@ -145,7 +155,7 @@ The pipeline consists of the following operations:
       - name: lane_detection
         type: _
         params: { 
-            save_path: "resources/images/lane_detection"    # Lane detected image save path
+            save_path: "resources/images/lane_detection"   # The save path of the lane images
         }
     ```
 5. _Extrinsic calibration_: the camera’s position and orientation relative to the lane are computed from the lane
@@ -154,7 +164,7 @@ The pipeline consists of the following operations:
       - name: extrinsic
         type: _
         params: { 
-            save_path: "resources/graphs/extrinsic"         # Cameras position graphs save path
+            save_path: "resources/graphs/extrinsic"        # The save path of the camera positions
         }
     ```
 6. _Ball tracking_: the ball is detected in each frame using YOLO, and missing detections are estimated through temporal
@@ -163,7 +173,7 @@ The pipeline consists of the following operations:
       - name: ball_tracker
         type: _
         params: { 
-            save_path: "resources/images/tracking"         # Ball detected image save path
+            save_path: "resources/images/tracking"         # The save path of the tracking images
         }
     ```
 7. _Ball localization_: detected 2D positions are transformed into 3D coordinates using the extrinsic calibration
@@ -171,7 +181,7 @@ The pipeline consists of the following operations:
       - name: ball_localization
         type: _
         params: { 
-            save_path: "resources/graphs/trajectory"         # 3D ball position save path
+            save_path: "resources/graphs/trajectory"       # The save path of the ball positions
         }
     ```
 8. _Ball rotation estimation_: optical flow and frame-to-frame analysis are applied to estimate the ball’s spin and the
@@ -180,6 +190,6 @@ The pipeline consists of the following operations:
       - name: ball_rotation
         type: _
         params: { 
-            save_path: "resources/graphs/"         # Ball angular speed and axis graphs save path
+            save_path: "resources/graphs/"                 # The save path of the ball speed and axis images
         }
     ```

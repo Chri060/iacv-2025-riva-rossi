@@ -1,6 +1,6 @@
 import pickle, random, re
-from typing import Any
-
+from _typeshed import SupportsWrite
+from typing import Any, cast
 import cv2 as cv
 import numpy as np
 from cv2.typing import MatLike
@@ -10,13 +10,24 @@ from numpy.typing import NDArray
 class Camera:
     """
     Class to store camera parameters and metadata.
+
+    A Camera object holds intrinsic, extrinsic, and distortion parameters,
+    as well as the 3D position and rotation of the camera in space.
+
+    Attributes:
+        name (str): Name or identifier for the camera.
+        intrinsic (NDArray | None): Intrinsic camera matrix (3x3) if available.
+        distortion (NDArray | None): Distortion coefficients if available.
+        extrinsic (NDArray | None): Extrinsic matrix (4x4) defining camera pose if available.
+        position (NDArray | None): 3D position of the camera in world coordinates.
+        rotation (NDArray | None): 3x3 rotation matrix representing camera orientation.
     """
 
     def __init__(self, name: str):
         """
-        Initializes a Camera object.
+        Initialize a Camera object with a given name.
 
-        Parameters:
+        Args:
             name (str): The name or identifier for the camera.
         """
 
@@ -27,25 +38,25 @@ class Camera:
         self.position: NDArray | None = None
         self.rotation: NDArray | None = None
 
-    def __str__(self):
-        """
-        Returns a formatted string showing all camera parameters.
-        """
-
-        return f"""---------------------------------------------\nCamera : {self.name}:\n> Intrinsic:\n{self.intrinsic}\n> Distortion:\n{self.distortion}\n> Position:\n{self.position}\n> Rotation:\n{self.rotation}\n---------------------------------------------"""
-
 
 class Video:
     """
     Class to handle video loading and basic property extraction.
+
+    This class provides an interface to load a video using OpenCV and
+    extract essential properties such as frame rate, duration, and resolution.
+
+    Attributes:
+        capture (cv.VideoCapture): OpenCV VideoCapture object for reading video frames.
+        path (str): File path to the video.
     """
 
     def __init__(self, path: str):
         """
-        Initializes a Video object by opening the video file.
+        Initialize a Video object by opening the specified video file.
 
-        Parameters:
-           path (str): The file path to the video.
+        Args:
+            path (str): The file path to the video.
         """
 
         self.capture = cv.VideoCapture(path)
@@ -53,12 +64,15 @@ class Video:
 
     def get_video_properties(self) -> tuple[float, float | int, tuple[int, int]]:
         """
-        Retrieves basic properties of the video.
+        Retrieve basic properties of the video.
+
+        Calculates frames per second (fps), total duration in seconds, and
+        the resolution (width x height) of the video.
 
         Returns:
             tuple: A tuple containing:
                 - fps (float): Frames per second of the video.
-                - duration (float): Total duration in seconds.
+                - duration (float | int): Total duration in seconds.
                 - resolution (tuple[int, int]): Width and height of the video in pixels.
         """
 
@@ -81,16 +95,23 @@ class Video:
 class Lane:
     """
     Class to represent a lane in an image or video frame.
+
+    A Lane object stores geometric information about a lane, such as its
+    corner points. The corners can be represented in 2D image coordinates
+    or 3D world coordinates.
+
+    Attributes:
+        corners (NDArray | None): Array of corner points defining the lane.
+            Can be 2D (image coordinates) or 3D (world coordinates). Defaults to None.
     """
 
     def __init__(self, corners: NDArray | None = None):
         """
-        Initializes a Lane object.
+        Initialize a Lane object with optional corner points.
 
-        Parameters:
-            corners (NDArray | None): Optional array of corner points defining the lane.
-                                      Typically, this could be a set of 2D points in image coordinates
-                                      or 3D points in world coordinates.
+        Args:
+            corners (NDArray | None, optional): Array of points defining the lane.
+                Defaults to None.
         """
 
         self.corners: NDArray | None = corners
@@ -98,22 +119,34 @@ class Lane:
 
 class BallTrajectory2d:
     """
-    Represents the 2D trajectory of a ball across video frames.
-    Stores image coordinates and radius for each frame and allows interpolation and retrieval of trajectory data.
+    Class to represent the 2D trajectory of a ball across video frames.
+
+    Stores image coordinates and radii for each frame and provides
+    functionality to interpolate missing values, retrieve trajectory data,
+    and visualize the trajectory on images.
+
+    Attributes:
+        n_frames (int): Total number of frames in the video or trajectory.
+        fps (float | None): Frames per second of the video.
+        start (int | None): First frame index with valid data.
+        end (int | None): Last frame index with valid data.
+        image_points (NDArray): Array of shape (n_frames, 2) storing (x, y) coordinates.
+        radii (NDArray): Array of shape (n_frames) storing the radius per frame.
+        color (tuple[int, int, int]): Random RGB color assigned for visualization.
     """
 
     def __init__(self, n_frames: int, fps: float | None = None, image_points: NDArray | None = None,
                  radii: NDArray | None = None, start: int | None = None, end: int | None = None):
         """
-        Initializes the BallTrajectory2d object.
+        Initialize a BallTrajectory2d object.
 
         Args:
-           n_frames (int): Number of frames in the video or trajectory.
-           fps (float | None): Frames per second (optional).
-           image_points (NDArray | None): Array of (x, y) coordinates per frame.
-           radii (NDArray | None): Array of radius values per frame.
-           start (int | None): Start the frame of the detected trajectory.
-           end (int | None): End frame of the detected trajectory.
+            n_frames (int): Number of frames in the video or trajectory.
+            fps (float | None, optional): Frames per second of the video. Defaults to None.
+            image_points (NDArray | None, optional): Pre-filled array of (x, y) coordinates.
+            radii (NDArray | None, optional): Pre-filled array of ball radii.
+            start (int | None, optional): Starting frame of the detected trajectory.
+            end (int | None, optional): End frame of the detected trajectory.
         """
 
         self.n_frames: int = n_frames
@@ -136,9 +169,11 @@ class BallTrajectory2d:
         """
         Set the ball's position and radius for a specific frame.
 
+        Updates the start and end frames automatically.
+
         Args:
-            coord (NDArray): 2D coordinates (x, y) in the image frame.
-            r (float): Radius of the ball in the image frame.
+            coord (NDArray | None): 2D coordinates (x, y) in the image frame.
+            r (float | None): Radius of the ball in the image frame.
             curr_frame (int): Frame index to update.
         """
 
@@ -159,15 +194,14 @@ class BallTrajectory2d:
     def get_by_frame(self, curr_frame: int) -> tuple[
         np.ndarray[tuple[int, ...], np.dtype[Any]], np.ndarray[tuple[int, ...], np.dtype[Any]]]:
         """
-        Retrieve ball coordinates and radius at a specific frame.
+        Retrieve the ball coordinates and radius at a specific frame.
 
         Args:
             curr_frame (int): Frame index to retrieve.
 
         Returns:
-            tuple: (coord, radius) for that frame.
+            tuple[NDArray, NDArray]: (coordinates, radius) for that frame.
         """
-
         if curr_frame > self.n_frames:
             raise Exception("Trying to access an out of bound frame")
         return self.image_points[curr_frame], self.radii[curr_frame]
@@ -177,8 +211,8 @@ class BallTrajectory2d:
         Get coordinates in a specified frame range or full trajectory.
 
         Args:
-            start (int | None): Start frame (default = self.start).
-            end (int | None): End frame (default = self.end).
+            start (int | None, optional): Start frame (default = self.start).
+            end (int | None, optional): End frame (default = self.end).
 
         Returns:
             NDArray: Array of coordinates in the specified range.
@@ -191,8 +225,8 @@ class BallTrajectory2d:
         Get radii in a specified frame range or full trajectory.
 
         Args:
-            start (int | None): Start frame (default = self.start).
-            end (int | None): End frame (default = self.end).
+            start (int | None, optional): Start frame (default = self.start).
+            end (int | None, optional): End frame (default = self.end).
 
         Returns:
             NDArray: Array of radii in the specified range.
@@ -203,16 +237,15 @@ class BallTrajectory2d:
     @staticmethod
     def interpolate_array(arr, window=8, inverse_fit=False):
         """
-        Interpolate or extrapolate missing (None) values in an array using a linear fit
-        over a sliding window.
+        Interpolate or extrapolate missing values (None) in an array using linear fit.
 
         Args:
-           arr (list): List of numeric values or None.
-           window (int): Number of past points to consider for extrapolation.
-           inverse_fit (bool): If True, fits 1/y = a*x + b instead of y = a*x + b.
+            arr (list): List of numeric values or None.
+            window (int, optional): Number of past points to consider. Defaults to 8.
+            inverse_fit (bool, optional): If True, fits 1/y = a*x + b. Defaults to False.
 
         Returns:
-           list: Array with interpolated/extrapolated integer values.
+            list[int]: Array with interpolated/extrapolated integer values.
         """
 
         n = len(arr)
@@ -235,10 +268,10 @@ class BallTrajectory2d:
                     if inverse_fit:
                         y_inv = 1 / y_known
                         coefficients = np.polyfit(x_known, y_inv, 1)
-                        arr_interp[i] = int(round(1 / np.polyval(coefficients, i)))
+                        arr_interp[i] = int(round(float(1 / np.polyval(coefficients, i))))
                     else:
                         coefficients = np.polyfit(x_known, y_known, 1)
-                        arr_interp[i] = int(round(np.polyval(coefficients, i)))
+                        arr_interp[i] = int(round(float(np.polyval(coefficients, i))))
                 elif known_indices:
                     arr_interp[i] = int(arr_interp[known_indices[-1]])
                 else:
@@ -256,15 +289,17 @@ class BallTrajectory2d:
     def interpolate_centers_2d(self, window=8):
         """
         Interpolates missing 2D points (x, y) together using linear fit over a sliding window.
-        Keeps initial None points untouched and converts all interpolated points to int.
+
+        Keeps initial None points untouched and converts interpolated points to int.
 
         Args:
-            window (int): Number of the previously known points to consider for linear fitting.
+            window (int, optional): Number of previously known points for linear fitting. Defaults to 8.
         """
+
         n = len(self.image_points)
         interp_points = self.image_points.copy()
 
-        # Find first known point
+        # Find the first known point
         first_known = next(
             (i for i, p in enumerate(interp_points) if p is not None and all(v is not None for v in p)),
             None
@@ -275,7 +310,7 @@ class BallTrajectory2d:
         # Iterate over all frames after the first known point
         for i in range(first_known + 1, n):
             if interp_points[i] is None or any(v is None for v in interp_points[i]):
-                # Collect last 'window' known points before current index
+                # Collect the last 'window' known points before the current index
                 known_indices = [
                     j for j in range(max(first_known, i - window), i)
                     if interp_points[j] is not None and all(v is not None for v in interp_points[j])
@@ -297,7 +332,7 @@ class BallTrajectory2d:
                         int(round(np.dot([i, 1], y_coef)))
                     ]
                 elif known_indices:
-                    # Propagate last known point
+                    # Propagate the last known point
                     last = known_indices[-1]
                     interp_points[i] = [
                         int(interp_points[last][0]),
@@ -321,9 +356,10 @@ class BallTrajectory2d:
 
     def interpolate_all(self):
         """
-        Interpolates both radii and 2D centers for the trajectory:
-        - Radii: Uses inverse fit (for perspective scaling effects)
-        - Centers: Interpolates x and y coordinates together
+        Interpolates both radii and 2D centers for the trajectory.
+
+        For the radii it uses inverse fit (to account for perspective scaling).
+        For the centers it interpolates x and y coordinates together.
         """
 
         self.radii = self.interpolate_array(self.radii, window=10, inverse_fit=True)
@@ -331,10 +367,13 @@ class BallTrajectory2d:
 
     def plot_onto(self, image: MatLike) -> None:
         """
-        Plots the trajectory on an image as circles and a connecting polyline.
+        Draws the trajectory on an image.
+
+        Circles are drawn at each frame based on radius, and a polyline
+        connects all valid points.
 
         Args:
-            image: The image (OpenCV Mat) to draw the trajectory on.
+            image (MatLike): OpenCV image to draw the trajectory on.
         """
 
         to_plot = []
@@ -364,21 +403,33 @@ class BallTrajectory2d:
 
 class BallTrajectory3d:
     """
-       Represents the 3D trajectory of a ball over a sequence of frames.
+    Class to represent the 3D trajectory of a ball over a sequence of frames.
+
+    Stores 3D coordinates for each frame and allows setting, retrieving,
+    and visualizing the trajectory. A random color is assigned for visualization.
+
+    Attributes:
+        n_frames (int): Total number of frames in the trajectory.
+        fps (int | None): Frame rate of the video (optional).
+        start (int | None): First frame index with valid coordinates.
+        end (int | None): Last frame index with valid coordinates.
+        coords (NDArray): Array of shape (n_frames, 3) storing 3D coordinates.
+        radius (int | None): Ball radius (optional).
+        color (tuple[int, int, int]): Random RGB color for visualization.
     """
 
     def __init__(self, n_frames: int, fps: int | None = None, coords: NDArray | None = None, radius: int | None = None,
                  start: int | None = None, end: int | None = None):
         """
-        Initializes a BallTrajectory3d instance.
+        Initialize a BallTrajectory3d instance.
 
         Args:
-           n_frames: Total number of frames to track.
-           fps: Frame rate of the video (optional).
-           coords: Predefined array of 3D coordinates (optional).
-           radius: Ball radius (optional).
-           start: Initial frame where the ball appears (optional).
-           end: Last frame where the ball appears (optional).
+            n_frames (int): Total number of frames to track.
+            fps (int | None, optional): Frame rate of the video. Defaults to None.
+            coords (NDArray | None, optional): Predefined array of 3D coordinates. Defaults to None.
+            radius (int | None, optional): Ball radius. Defaults to None.
+            start (int | None, optional): Initial frame index of the trajectory. Defaults to None.
+            end (int | None, optional): Last frame index of the trajectory. Defaults to None.
         """
 
         self.n_frames = n_frames
@@ -399,14 +450,13 @@ class BallTrajectory3d:
 
     def set_by_frame(self, coord: NDArray, curr_frame: int) -> None:
         """
-        Sets the 3D coordinate for a specific frame.
+        Set the 3D coordinate for a specific frame.
+
+        Updates the start and end frame indices automatically.
 
         Args:
-            coord: 3D coordinate array [x, y, z].
-            curr_frame: Frame index to set the coordinate for.
-
-        Raises:
-            Exception: If the frame index is out of bounds.
+            coord (NDArray): 3D coordinate [x, y, z].
+            curr_frame (int): Frame index to update.
         """
 
         if curr_frame > self.n_frames:
@@ -425,55 +475,64 @@ class BallTrajectory3d:
 
     def get_by_frame(self, curr_frame: int) -> NDArray:
         """
-        Returns the 3D coordinate for a specific frame.
+        Retrieve the 3D coordinate for a specific frame.
 
         Args:
-            curr_frame: Frame index to retrieve.
+            curr_frame (int): Frame index to retrieve.
 
         Returns:
-            3D coordinate array [x, y, z].
-
-        Raises:
-            Exception: If the frame index is out of bounds.
+            NDArray: 3D coordinate [x, y, z] for the specified frame.
         """
-
         if curr_frame > self.n_frames:
             raise Exception("Trying to access an out of bounds frame")
+
         return self.coords[curr_frame]
 
     def get_coords(self, start: int | None = None, end: int | None = None):
         """
-        Returns the 3D coordinates for a range of frames.
+        Retrieve 3D coordinates for a range of frames.
 
         Args:
-            start: Start frame index (defaults to first non-None frame).
-            end: End frame index (defaults to last non-None frame).
+            start (int | None, optional): Start frame index (default = self.start).
+            end (int | None, optional): End frame index (default = self.end).
 
         Returns:
-            Subarray of 3D coordinates from the start to the end frames.
+            NDArray: Array of 3D coordinates from `start` to `end` frames.
         """
 
         start = start or self.start
+
         end = end or self.end
+
         return self.coords[start:end]
 
 
 class View:
     """
-    Represents a single camera view of a video, optionally including lane information and a 2D ball trajectory.
+    Class to represent a single camera view of a video, optionally including lane information and a 2D ball trajectory.
+
+    A View object encapsulates all the data associated with one camera perspective,
+    including the camera parameters, video, lane geometry, and the 2D trajectory of the ball.
+
+    Attributes:
+        camera (Camera): Camera object capturing this view.
+        video (Video): Video object associated with this view.
+        lane (Lane): Lane geometry information for the view.
+        trajectory (BallTrajectory2d | None): 2D trajectory of the ball in this view, if available.
     """
 
     def __init__(self, camera: Camera, video: Video, lane: Lane | None = None,
                  trajectory: BallTrajectory2d | None = None, ):
         """
-        Initializes a View instance.
+        Initialize a View instance.
 
         Args:
-           camera: Camera object capturing this view.
-           video: Video object for this view.
-           lane: Optional lane information; defaults to a new Lane object if None.
-           trajectory: Optional 2D ball trajectory; defaults to None.
+            camera (Camera): Camera capturing this view.
+            video (Video): Video associated with this view.
+            lane (Lane | None, optional): Lane information. Defaults to a new Lane object if None.
+            trajectory (BallTrajectory2d | None, optional): 2D ball trajectory. Defaults to None.
         """
+
         self.camera = camera
         self.video = video
         self.lane = lane or Lane()
@@ -482,9 +541,21 @@ class View:
 
 class Environment:
     """
-    A global environment manager for handling videos, cameras, and pipelines.
-    Stores global paths, video/camera names, and environment variables.
-    Provides static methods to initialize and access views and run processing pipelines.
+    Global environment manager for handling videos, cameras, and pipelines.
+
+    Stores global paths, video/camera names, coordinates, and environment variables.
+    Provides static methods to initialize views, access stored objects, and run processing pipelines.
+
+    Class Attributes:
+        coords (dict): Stores global coordinates or data used by the pipeline.
+        visualization (bool): Flag to enable visualization.
+        CV_VISUALIZATION_NAME (str): Default name for the OpenCV visualization window.
+        video_name (str): Name of the current video being processed.
+        camera_names (list[str]): List of camera names in the environment.
+        paths (dict[str, str]): Dictionary of global paths (e.g., originals, results).
+        env_vars (dict[str, object]): Storage for all objects in the environment keyed by name.
+        save_name (str | None): Name used when saving processed data.
+        __initialized (bool): Flag indicating whether the environment has been initialized.
     """
 
     coords = {}
@@ -500,12 +571,16 @@ class Environment:
     @staticmethod
     def initialize_globals(save_name: str, global_parameters: dict) -> None:
         """
-        Initializes global environment variables.
+        Initializes global environment variables and loads camera views.
 
         Args:
-            save_name: Name to use when saving processed data.
-            global_parameters: Dictionary containing 'video_name', 'camera_names',
-                               'paths', 'coords', and 'visualization' flags.
+            save_name (str): Name used when saving processed data.
+            global_parameters (dict): Dictionary containing:
+                - 'video_name': Name of the video.
+                - 'camera_names': List of camera names.
+                - 'paths': Dictionary of relevant paths.
+                - 'coords': Initial coordinates or data.
+                - 'visualization': Flag for enabling visualization.
         """
 
         print(f"Saves as : {save_name}")
@@ -525,8 +600,8 @@ class Environment:
     @staticmethod
     def __load_views() -> None:
         """
-        Initializes View objects for each camera and video based on global parameters.
-        Stores each view in env_vars keyed by camera name.
+        Initializes View objects for each camera and video.
+        Each View is stored in env_vars keyed by camera name.
         """
 
         video_name = Environment.video_name
@@ -542,10 +617,14 @@ class Environment:
     @staticmethod
     def start_pipeline(pipeline_configs: dict) -> None:
         """
-        Executes a series of processing pipeline stages (pipes) according to pipeline_configs.
+        Executes a series of pipeline stages according to pipeline_configs.
 
         Args:
-           pipeline_configs: List of dictionaries specifying pipe 'name', 'type', and optional 'params'.
+            pipeline_configs (dict): List of dictionaries specifying pipe 'name', 'type',
+                                     and optional 'params'. Each dict should contain:
+                                     - 'name': The pipeline step name.
+                                     - 'type': "execute" or "load".
+                                     - 'params': Optional parameters for the pipeline step.
         """
 
         from pipeline.pipes.intrinsic_calibration import IntrinsicCalibration
@@ -593,16 +672,16 @@ class Environment:
     @staticmethod
     def get(name: str):
         """
-        Retrieves an object stored in the environment.
+        Retrieve an object stored in the environment.
 
         Args:
-            name: Name of the object to retrieve.
+            name (str): Name of the object to retrieve.
 
         Returns:
-            The object is stored under 'name' in env_vars.
+            object: The stored object corresponding to the given name.
 
         Raises:
-            Exception: If the environment is not initialized or the name does not exist.
+            Exception: If the environment is not initialized or the object does not exist.
         """
 
         if not Environment.__initialized:
@@ -617,9 +696,9 @@ class Environment:
         Stores an object in the environment.
 
         Args:
-            name: Name under which to store the object.
-            obj: Object to store.
-            overwrite: Whether to overwrite an existing object with the same name.
+            name (str): Name under which to store the object.
+            obj (object): Object to store.
+            overwrite (bool, optional): Whether to overwrite an existing object with the same name. Defaults to False.
 
         Raises:
             Exception: If the environment is not initialized or attempting to overwrite without permission.
@@ -632,10 +711,12 @@ class Environment:
         Environment.env_vars[name] = obj
 
     @staticmethod
-    def get_views() -> list[object | None]:
+    def get_views() -> list[Any | None]:
         """
+        Retrieve all View objects corresponding to the initialized cameras.
+
         Returns:
-            List of all View objects corresponding to the initialized cameras.
+            list[object | None]: List of View objects in the same order as camera_names.
         """
 
         return [Environment.get(name) for name in Environment.camera_names]
@@ -643,8 +724,13 @@ class Environment:
 
 class DataManager:
     """
-    A simple utility class for saving, loading, and deleting Python objects
-    using pickle serialization.
+    Utility class for saving, loading, and deleting Python objects using pickle serialization.
+
+    Provides static methods to persist and retrieve Python objects to/from the disk.
+    The default storage path is "resources/pickle/".
+
+    Attributes:
+        save_path (str): Directory path where pickle files are stored.
     """
 
     save_path: str = "resources/pickle/"
@@ -652,32 +738,35 @@ class DataManager:
     @staticmethod
     def save(obj: object, save_name: str, intrinsic: bool = False) -> None:
         """
-        Saves an object to disk using pickle.
+        Save a Python object to disk using pickle serialization.
 
         Args:
-            obj: The Python object to save.
-            save_name: Name of the file (without extension) to save the object as.
-            intrinsic: Whether the file is for intrinsic calibration.
+            obj (object): The Python object to save.
+            save_name (str): Name of the file (without extension) to save the object as.
+            intrinsic (bool, optional): Whether this file is for intrinsic calibration. Defaults to False.
         """
+
         if intrinsic:
-            with open(f"{DataManager.save_path}/{save_name}.pkl", "wb") as out:
+            with open(f"{DataManager.save_path}/{save_name}.pkl", "wb") as f:
+                out = cast(SupportsWrite[bytes], f)
                 pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
         else:
-            with open(f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix(".mp4")}.pkl",
-                      "wb") as out:
+            path = f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix('.mp4')}.pkl"
+            with open(path, "wb") as f:
+                out = cast(SupportsWrite[bytes], f)
                 pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
     def load(save_name: str, intrinsic: bool = False) -> object:
         """
-        Loads an object from a pickle file.
+        Load a Python object from a pickle file.
 
         Args:
-            save_name: Name of the file (without extension) to load the object from.
-            intrinsic: Whether the file is for intrinsic calibration.
+            save_name (str): Name of the file (without extension) to load the object from.
+            intrinsic (bool, optional): Whether the file is for intrinsic calibration. Defaults to False.
 
         Returns:
-            The deserialized Python object.
+            object: The deserialized Python object, or None if the file is not found.
         """
 
         try:
