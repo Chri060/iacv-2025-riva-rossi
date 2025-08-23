@@ -26,17 +26,9 @@ class ExtrinsicCalibration(Pipe):
         - Optionally visualizes the results
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-
-        # Visualization flag
-        try:
-            visualization = params.get("visualization", Environment.visualization)
-        except AttributeError as _:
-            visualization = Environment.visualization
+        # Load parameters
+        save_path = params["save_path"]
+        visualization = params.get("visualization", Environment.visualization)
 
         # Load known 3D world coordinates of the bowling lane corners
         world_points = np.array(Environment.coords["world_lane"])

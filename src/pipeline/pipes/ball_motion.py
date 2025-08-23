@@ -144,8 +144,6 @@ class SpinBall(Pipe):
                                 med_delta_theta = np.average(delta_thetas, weights=weights)
                                 spin_rate = med_delta_theta * fps
                                 prev_spin = spin_rates[-1] if spin_rates else 0.0
-                                if len(spin_rates) > 0 and abs(spin_rate - prev_spin) > 20:
-                                    spin_rate = prev_spin
                                 spin_rate = smoothing_alpha * spin_rate + (1 - smoothing_alpha) * prev_spin
                                 spin_rates.append(spin_rate)
                             else:
@@ -356,44 +354,19 @@ class SpinBall(Pipe):
             visualization (bool): Whether to display plots interactively
         """
 
-        # Combine two cameras into a single spin rate series if at least two cameras exist
-        if len(spin_results) >= 2:
-            cams = list(spin_results.keys())
-            spins1 = spin_results[cams[0]]
-            spins2 = spin_results[cams[1]]
-            min_len = min(len(spins1), len(spins2))
-            combined = []
-
-            for i in range(min_len):
-                s1, s2 = spins1[i], spins2[i]
-                if s1 > 0 and s2 > 0:
-                    combined.append((s1 + s2) / 2.0)
-                elif s1 > 0:
-                    combined.append(s1)
-                elif s2 > 0:
-                    combined.append(s2)
-                else:
-                    combined.append(0.0)
-
-            combined = np.array(combined, dtype=np.float32)
-            spin_results["combined"] = combined
-
         plt.figure(figsize=(10, 6))
         for cam_name, spins in spin_results.items():
             spins_rps = spins / (2 * np.pi)
             window = 5
             spins_smooth = np.convolve(spins_rps, np.ones(window) / window, mode='same')
-            if cam_name == "combined":
-                plt.plot(abs(spins_smooth), label="Combined", linewidth=2.5, color="black")
-            else:
-                plt.plot(abs(spins_smooth), label=f"{cam_name}", alpha=0.5)
+            plt.plot(abs(spins_smooth), label=f"{cam_name}", alpha=0.5)
 
         plt.xlabel("Frame")
         plt.ylabel("Spin rate (rev/s)")
         plt.title("Ball Spin Rate Over Time")
         plt.legend()
         plt.grid(True)
-        if graph_save_path is not "":
+        if graph_save_path != "":
             plt.savefig(
                 f"{graph_save_path}/angular_speed/{Environment.save_name}_{Environment.video_name.removesuffix(".mp4")}.png",
                 dpi=300, bbox_inches="tight")
@@ -453,7 +426,7 @@ class SpinBall(Pipe):
 
         for name, (elev, azim) in views.items():
             ax.view_init(elev=elev, azim=azim)
-            if graph_save_path is not "":
+            if graph_save_path != "":
                 plt.savefig(
                     f"{graph_save_path}/axis/{Environment.save_name}_{name}_{Environment.video_name.removesuffix(".mp4")}.png",
                     dpi=300, bbox_inches="tight")

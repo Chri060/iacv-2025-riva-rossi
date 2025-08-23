@@ -22,7 +22,7 @@ class LocalizeBall(Pipe):
         """
 
         save_path = params["save_path"]
-        visualization = params.get("visualization", False)
+        visualization = params.get("visualization", Environment.visualization)
         views = Environment.get_views()
 
         # Compute the projection matrices for both cameras
@@ -114,11 +114,11 @@ class LocalizeBall(Pipe):
         input("\033[92mPress Enter to continue...\033[0m")
 
     def load(self, params: dict):
+
+        # Load the parameters
         trajectory_3d = DataManager.load(self.save_name)
         Environment.set("3D_trajectory", trajectory_3d)
-
-        # Get the visualization flag from params or default to environment setting
-        visualization = params.get("visualization", False)
+        visualization = params.get("visualization", Environment.visualization)
 
         if visualization:
             ax = plot_utils.get_3d_plot("Ball Localization : 3D Visualization")

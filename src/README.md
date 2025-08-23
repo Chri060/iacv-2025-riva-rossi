@@ -101,7 +101,7 @@ Some necessary global configuration options specifying the videos to analyze, ca
 ```yml
 pipeline:
   - name: module_name
-    type: execute
+    type: load | execute
     params: { ... }
 ```
 

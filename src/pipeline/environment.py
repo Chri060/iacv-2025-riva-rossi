@@ -261,53 +261,62 @@ class BallTrajectory2d:
         Args:
             window (int): Number of the previously known points to consider for linear fitting.
         """
-
         n = len(self.image_points)
-        interp_points = self.image_points.copy()  # Copy to avoid modifying the original immediately
+        interp_points = self.image_points.copy()
 
-        # Find the index of the first known point where both x and y are not None
-        first_known = next((i for i, p in enumerate(interp_points) if p is not None and all(v is not None for v in p)),
-                           None)
+        # Find first known point
+        first_known = next(
+            (i for i, p in enumerate(interp_points) if p is not None and all(v is not None for v in p)),
+            None
+        )
         if first_known is None:
-            return  # All points are None, nothing to interpolate
+            return  # All points are None
 
         # Iterate over all frames after the first known point
         for i in range(first_known + 1, n):
-            # Check if the current point is missing (None or contains None)
-            if interp_points[i] is None or np.any(interp_points[i] is None):
-                # Collect the last 'window' known points before the current frame
-                known_indices = [j for j in range(max(first_known, i - window), i) if interp_points[j] is not None]
+            if interp_points[i] is None or any(v is None for v in interp_points[i]):
+                # Collect last 'window' known points before current index
+                known_indices = [
+                    j for j in range(max(first_known, i - window), i)
+                    if interp_points[j] is not None and all(v is not None for v in interp_points[j])
+                ]
 
                 if len(known_indices) >= 2:
-                    # Perform linear fit using last known points
+                    # Linear regression
                     t_known = np.array(known_indices)
                     x_known = np.array([interp_points[j][0] for j in known_indices], dtype=float)
                     y_known = np.array([interp_points[j][1] for j in known_indices], dtype=float)
 
-                    # Linear regression: x(t) = a*t + b and y(t) = c*t + d
                     matrix = np.vstack([t_known, np.ones(len(t_known))]).T
-                    x_coefficient = np.linalg.lstsq(matrix, x_known, rcond=None)[0]
-                    y_coefficient = np.linalg.lstsq(matrix, y_known, rcond=None)[0]
+                    x_coef = np.linalg.lstsq(matrix, x_known, rcond=None)[0]
+                    y_coef = np.linalg.lstsq(matrix, y_known, rcond=None)[0]
 
-                    # Interpolate the missing point
-                    interp_points[i] = [int(round(np.dot([i, 1], x_coefficient))),
-                                        int(round(np.dot([i, 1], y_coefficient)))]
+                    # Interpolate / extrapolate
+                    interp_points[i] = [
+                        int(round(np.dot([i, 1], x_coef))),
+                        int(round(np.dot([i, 1], y_coef)))
+                    ]
                 elif known_indices:
-                    # If only one known point exists, propagate it forward
-                    interp_points[i] = [int(interp_points[known_indices[-1]][0]),
-                                        int(interp_points[known_indices[-1]][1])]
+                    # Propagate last known point
+                    last = known_indices[-1]
+                    interp_points[i] = [
+                        int(interp_points[last][0]),
+                        int(interp_points[last][1])
+                    ]
                 else:
-                    # If no previous known points, use the next known point if available
-                    next_known = next((interp_points[j] for j in range(i + 1, n) if interp_points[j] is not None), None)
+                    # Edge case: no previous known points (should not happen after first_known)
+                    next_known = next((interp_points[j] for j in range(i + 1, n)
+                                       if
+                                       interp_points[j] is not None and all(v is not None for v in interp_points[j])),
+                                      None)
                     if next_known is not None:
                         interp_points[i] = [int(next_known[0]), int(next_known[1])]
 
-        # Convert all known points after first_known to integers
+        # Ensure all points after first_known are integers
         for i in range(first_known, n):
-            if interp_points[i] is not None:
+            if interp_points[i] is not None and all(v is not None for v in interp_points[i]):
                 interp_points[i] = [int(interp_points[i][0]), int(interp_points[i][1])]
 
-        # Update class attribute with interpolated points
         self.image_points = interp_points
 
     def interpolate_all(self):
