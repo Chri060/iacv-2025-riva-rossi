@@ -190,7 +190,7 @@ class TrackBall(Pipe):
         out_video = None
         if save_path:
             out_path = f"{save_path.replace("images", "videos")}/{camera_name}/{Environment.save_name}_{Environment.video_name}"
-            out_video = cv.VideoWriter(out_path, cv.VideoWriter_fourcc(*'H264'), fps, (width, height))
+            out_video = cv.VideoWriter(out_path, cv.VideoWriter_fourcc(*'avc1'), fps, (width, height))
 
         last_box = None
         frame_idx = 0

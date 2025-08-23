@@ -32,17 +32,9 @@ class SynchronizeVideo(Pipe):
                 visualization (bool, optional): Whether to visualize synchronization. Defaults to Environment.visualization.
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-
-        # Visualization
-        try:
-            visualization = params.get("visualization", Environment.visualization)
-        except AttributeError as _:
-            visualization = Environment.visualization
+        # Get the parameters
+        save_path = params["save_path"]
+        visualization = params.get("visualization", Environment.visualization)
 
         # Get names of the cameras from the Environment
         cam1_name = Environment.camera_names[0]
@@ -102,17 +94,9 @@ class SynchronizeVideo(Pipe):
                 visualization (bool, optional): Whether to show videos side by side. Defaults to Environment.visualization.
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-
-        # Visualization
-        try:
-            visualization = params.get("visualization", Environment.visualization)
-        except AttributeError as _:
-            visualization = Environment.visualization
+        # Get the parameters
+        save_path = params["save_path"]
+        visualization = params.get("visualization", Environment.visualization)
 
         view = Environment.get_views()
         view1, view2 = view[0], view[1]
@@ -155,6 +139,7 @@ class SynchronizeVideo(Pipe):
             dict[str, html.Div]: Mapping of class name to the Dash HTML page containing video players.
         """
 
+        # Get the parameters
         save_path = params["save_path"]
 
         # Get the two views for display
@@ -260,8 +245,8 @@ class SynchronizeVideo(Pipe):
         """
 
         # Initialize video writers
-        fourcc1 = cv.VideoWriter_fourcc(*"H264")
-        fourcc2 = cv.VideoWriter_fourcc(*"H264")
+        fourcc1 = cv.VideoWriter_fourcc(*"avc1")
+        fourcc2 = cv.VideoWriter_fourcc(*"avc1")
 
         # Get width and height of both videos
         _, _, width_height1 = videos[0].get_video_properties()

@@ -1,5 +1,4 @@
 import pickle, random, re
-from _typeshed import SupportsWrite
 from typing import Any, cast
 import cv2 as cv
 import numpy as np
@@ -748,13 +747,11 @@ class DataManager:
 
         if intrinsic:
             with open(f"{DataManager.save_path}/{save_name}.pkl", "wb") as f:
-                out = cast(SupportsWrite[bytes], f)
-                pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
+                pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
         else:
             path = f"{DataManager.save_path}/{save_name}_{Environment.video_name.removesuffix('.mp4')}.pkl"
             with open(path, "wb") as f:
-                out = cast(SupportsWrite[bytes], f)
-                pickle.dump(obj, out, pickle.HIGHEST_PROTOCOL)
+                pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
     def load(save_name: str, intrinsic: bool = False) -> object:

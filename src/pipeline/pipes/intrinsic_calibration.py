@@ -126,6 +126,8 @@ class IntrinsicCalibration(Pipe):
         # Save results
         DataManager.save(calibration_results, self.save_name, intrinsic=True)
 
+        input("\033[92mPress Enter to continue...\033[0m")
+
     def load(self):
         """
         Loads saved intrinsic calibration results from DataManager.
@@ -138,6 +140,8 @@ class IntrinsicCalibration(Pipe):
             view.camera.distortion = res["distortion"]
 
         self.show_results(cast(Iterable, DataManager.load(self.save_name, intrinsic=True)))
+
+        input("\033[92mPress Enter to continue...\033[0m")
 
     def plotly_page(self, params: dict):
         """
@@ -168,8 +172,6 @@ class IntrinsicCalibration(Pipe):
             print("Distortion coefficients:")
             print("  " + "  ".join(f"{val:10.6f}" for val in res['distortion'][0]))
             print("")
-
-        input("\033[92mPress Enter to continue...\033[0m")
 
     @staticmethod
     def find_checkerboard(img: MatLike, checkerboard_size: Tuple[int, int], criteria: Tuple[int, int, float],

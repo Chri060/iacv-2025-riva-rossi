@@ -34,17 +34,9 @@ class UndistortVideo(Pipe):
                     Defaults to Environment.visualization.
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
-
-        # Visualization
-        try:
-            visualization = params.get("visualization", Environment.visualization)
-        except AttributeError as _:
-            visualization = Environment.visualization
+        # Get the parameters
+        save_path = params["save_path"]
+        visualization = params.get("visualization", Environment.visualization)
 
         # Process each view (camera and video pair) in the environment
         for i, view in enumerate(Environment.get_views()):
@@ -56,7 +48,7 @@ class UndistortVideo(Pipe):
             output_path = f"{save_path}/{cam.name}/{Environment.save_name}_{Environment.video_name}"
 
             # Prepare the video writer
-            fourcc = cv.VideoWriter_fourcc(*"H264")
+            fourcc = cv.VideoWriter_fourcc(*"avc1")
             out = cv.VideoWriter(output_path, fourcc, fps, width_height)
 
             # Compute optimal intrinsic matrix (removes black borders)
@@ -107,7 +99,7 @@ class UndistortVideo(Pipe):
 
         # Load the parameters
         save_path = params["save_path"]
-        visualization = params["visualization"]
+        visualization = params.get("visualization", Environment.visualization)
 
         paths = []
 
@@ -151,11 +143,8 @@ class UndistortVideo(Pipe):
             dict[str, html.Div]: Mapping of class name to the Dash HTML page containing video players.
         """
 
-        # Save path
-        try:
-            save_path = params["save_path"]
-        except Exception as _:
-            raise Exception("Missing required parameter : save_path")
+        # Get the parameters
+        save_path = params["save_path"]
 
         # Get the first two views
         view = Environment.get_views()
