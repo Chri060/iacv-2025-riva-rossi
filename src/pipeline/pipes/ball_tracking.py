@@ -221,7 +221,7 @@ class TrackBall(Pipe):
                 x1_offset, y1_offset = x1_crop, y1_crop
 
             # YOLO detection
-            results = model(yolo_frame, conf=0.05, classes=[32], augment=True)[0]
+            results = model(yolo_frame, conf=0.05, classes=[32], augment=True, half=False)[0]
 
             ball_boxes = []
             for cls, box in zip(results.boxes.cls, results.boxes.xyxy):
