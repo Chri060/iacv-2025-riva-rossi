@@ -111,7 +111,10 @@ class IntrinsicCalibration(Pipe):
 
             # Run calibration
             if len(object_points) > 0 and img_shape is not None:
-                ret, mtx, dist, _, _ = cv.calibrateCamera(object_points, image_points, img_shape, None, None)
+
+                view = Environment.get(camera_name)
+
+                ret, mtx, dist, _, _ = cv.calibrateCamera(object_points, image_points, img_shape, cameraMatrix=view.camera.intrinsic, distCoeffs=view.camera.distortion)
 
                 # Save results in Environment for later use
                 view = Environment.get(camera_name)
@@ -132,6 +135,7 @@ class IntrinsicCalibration(Pipe):
         """
         Loads saved intrinsic calibration results from DataManager.
         """
+
         cal_results = cast(Iterable, DataManager.load(self.save_name, intrinsic=True))
 
         for res in cal_results:
