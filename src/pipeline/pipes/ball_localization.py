@@ -3,7 +3,6 @@ import cv2 as cv
 import numpy as np
 import plotly.graph_objects as go
 from dash import dcc, html
-from scipy.interpolate import make_smoothing_spline
 import matplotlib.pyplot as plt
 import pipeline.plot_utils as plot_utils
 from pipeline.environment import BallTrajectory3d, DataManager, Environment
@@ -17,7 +16,6 @@ class LocalizeBall(Pipe):
     This pipeline step:
         1. Triangulates the 3D ball position from 2D trajectories in two camera views.
         2. Filters points to keep only those over the bowling lane.
-        3. Smooths the trajectory using spline interpolation.
         4. Saves the 3D trajectory and optionally visualizes it using matplotlib and Plotly.
     """
 
