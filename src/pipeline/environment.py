@@ -1,9 +1,10 @@
 import pickle, random, re
-from typing import Any, cast
+from typing import Any
 import cv2 as cv
 import numpy as np
 from cv2.typing import MatLike
 from numpy.typing import NDArray
+from scipy.interpolate import interp1d
 
 
 class Camera:
@@ -233,66 +234,43 @@ class BallTrajectory2d:
 
         return self.radii[start or self.start: end or self.end]
 
-    @staticmethod
-    def interpolate_array(arr, window=8, inverse_fit=False):
-        """
-        Interpolate or extrapolate missing values (None) in an array using linear fit.
 
-        Args:
-            arr (list): List of numeric values or None.
-            window (int, optional): Number of past points to consider. Defaults to 8.
-            inverse_fit (bool, optional): If True, fits 1/y = a*x + b. Defaults to False.
+    def interpolate_radii(self):
+        """
+        Interpolate or extrapolate missing values (None) in an array using linear interpolation.
+
+        Leading None values are left untouched. Converts all interpolated values to int.
 
         Returns:
             list[int]: Array with interpolated/extrapolated integer values.
         """
-
-        n = len(arr)
-        arr_interp = arr.copy()
+        n = len(self.radii)
+        arr_interp = self.radii.copy()
 
         # Find the first known value
-        first_known = next((i for i, v in enumerate(arr) if v is not None), None)
-        if first_known is None:
-            return arr_interp
+        first_known = next((i for i, v in enumerate(arr_interp) if v is not None), None)
 
-        # Interpolate or extrapolate after the first known value
-        for i in range(first_known + 1, n):
-            if arr_interp[i] is None:
-                # Collect last 'window' known points
-                known_indices = [j for j in range(max(first_known, i - window), i) if arr_interp[j] is not None]
-                if len(known_indices) >= 2:
-                    x_known = np.array(known_indices)
-                    y_known = np.array([arr_interp[j] for j in known_indices], dtype=float)
+        # Collect all known points from first_known onward
+        known_indices = [i for i in range(first_known, n) if arr_interp[i] is not None]
+        known_values = [arr_interp[i] for i in known_indices]
 
-                    if inverse_fit:
-                        y_inv = 1 / y_known
-                        coefficients = np.polyfit(x_known, y_inv, 1)
-                        arr_interp[i] = int(round(float(1 / np.polyval(coefficients, i))))
-                    else:
-                        coefficients = np.polyfit(x_known, y_known, 1)
-                        arr_interp[i] = int(round(float(np.polyval(coefficients, i))))
-                elif known_indices:
-                    arr_interp[i] = int(arr_interp[known_indices[-1]])
-                else:
-                    next_known = next((arr_interp[j] for j in range(i + 1, n) if arr_interp[j] is not None), None)
-                    if next_known is not None:
-                        arr_interp[i] = int(next_known)
+        # Build linear interpolator with extrapolation
+        f = interp1d(known_indices, known_values, kind="linear", fill_value="extrapolate")
 
-        # Convert all known values to int
+        # Interpolate missing points from first_known onward
         for i in range(first_known, n):
-            if arr_interp[i] is not None:
+            if arr_interp[i] is None:
+                arr_interp[i] = int(round(float(f(i))))
+            else:
                 arr_interp[i] = int(arr_interp[i])
 
-        return arr_interp
+        self.radii = arr_interp
 
-    def interpolate_centers_2d(self, window=8):
+    def interpolate_centers(self):
         """
-        Interpolates missing 2D points (x, y) together using linear fit over a sliding window.
+        Interpolates missing 2D points (x, y) using cubic spline interpolation.
 
         Keeps initial None points untouched and converts interpolated points to int.
-
-        Args:
-            window (int, optional): Number of previously known points for linear fitting. Defaults to 8.
         """
 
         n = len(self.image_points)
@@ -306,49 +284,30 @@ class BallTrajectory2d:
         if first_known is None:
             return  # All points are None
 
-        # Iterate over all frames after the first known point
-        for i in range(first_known + 1, n):
-            if interp_points[i] is None or any(v is None for v in interp_points[i]):
-                # Collect the last 'window' known points before the current index
-                known_indices = [
-                    j for j in range(max(first_known, i - window), i)
-                    if interp_points[j] is not None and all(v is not None for v in interp_points[j])
-                ]
+        # Collect all known points from first_known onward
+        known_indices = [
+            i for i in range(first_known, n)
+            if interp_points[i] is not None and all(v is not None for v in interp_points[i])
+        ]
 
-                if len(known_indices) >= 2:
-                    # Linear regression
-                    t_known = np.array(known_indices)
-                    x_known = np.array([interp_points[j][0] for j in known_indices], dtype=float)
-                    y_known = np.array([interp_points[j][1] for j in known_indices], dtype=float)
+        if len(known_indices) < 2:
+            return  # Not enough points to interpolate
 
-                    matrix = np.vstack([t_known, np.ones(len(t_known))]).T
-                    x_coef = np.linalg.lstsq(matrix, x_known, rcond=None)[0]
-                    y_coef = np.linalg.lstsq(matrix, y_known, rcond=None)[0]
+        t_known = np.array(known_indices)
+        x_known = np.array([interp_points[i][0] for i in known_indices], dtype=float)
+        y_known = np.array([interp_points[i][1] for i in known_indices], dtype=float)
 
-                    # Interpolate / extrapolate
-                    interp_points[i] = [
-                        int(round(np.dot([i, 1], x_coef))),
-                        int(round(np.dot([i, 1], y_coef)))
-                    ]
-                elif known_indices:
-                    # Propagate the last known point
-                    last = known_indices[-1]
-                    interp_points[i] = [
-                        int(interp_points[last][0]),
-                        int(interp_points[last][1])
-                    ]
-                else:
-                    # Edge case: no previous known points (should not happen after first_known)
-                    next_known = next((interp_points[j] for j in range(i + 1, n)
-                                       if
-                                       interp_points[j] is not None and all(v is not None for v in interp_points[j])),
-                                      None)
-                    if next_known is not None:
-                        interp_points[i] = [int(next_known[0]), int(next_known[1])]
+        # Linear interpolation using spline
+        fx = interp1d(t_known, x_known, kind="linear", fill_value="extrapolate")
+        fy = interp1d(t_known, y_known, kind="linear", fill_value="extrapolate")
 
-        # Ensure all points after first_known are integers
+        # Interpolate all missing points AFTER first_known
         for i in range(first_known, n):
-            if interp_points[i] is not None and all(v is not None for v in interp_points[i]):
+            if interp_points[i] is None or any(v is None for v in interp_points[i]):
+                x_val = float(fx(i))
+                y_val = float(fy(i))
+                interp_points[i] = [int(round(x_val)), int(round(y_val))]
+            else:
                 interp_points[i] = [int(interp_points[i][0]), int(interp_points[i][1])]
 
         self.image_points = interp_points
@@ -361,8 +320,8 @@ class BallTrajectory2d:
         For the centers it interpolates x and y coordinates together.
         """
 
-        self.radii = self.interpolate_array(self.radii, window=10, inverse_fit=True)
-        self.interpolate_centers_2d(window=8)
+        self.interpolate_radii()
+        self.interpolate_centers()
 
     def plot_onto(self, image: MatLike) -> None:
         """
