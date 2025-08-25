@@ -81,17 +81,14 @@ class LocalizeBall(Pipe):
         if end_over is None:
             end_over = len(points_3d)
 
+        # Keep only the trajectory segment
         points_3d = points_3d[start_over:end_over]
 
-        # Smooth the 3D trajectory using spline interpolation
-        t = np.arange(0, len(points_3d), 1)
+        # Set Z to constant ball radius
+        z = np.full(points_3d.shape[0], params.get("ball_radius", 0.1091))
 
-        spl_x = make_smoothing_spline(t, points_3d[:, 0], lam=100)
-        spl_y = make_smoothing_spline(t, points_3d[:, 1], lam=100)
-        z = np.full_like(spl_x(t), params.get("ball_radius", 0.1091))  # same shape as spl_x(t)
-
-        # Update points_3d with smoothed coordinates
-        points_3d = np.array([spl_x(t), spl_y(t), z]).T.reshape(-1, 3)
+        # Update points_3d with constant Z
+        points_3d = np.column_stack((points_3d[:, 0], points_3d[:, 1], z))
 
         # Store the 3D trajectory in a Ball_Trajectory_3D object
         trajectory_3d = BallTrajectory3d(views[0].trajectory.n_frames)
