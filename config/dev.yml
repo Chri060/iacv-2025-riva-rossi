@@ -1,7 +1,7 @@
 # To be used during development
 save_name: dev
 global:
-  video_name: "video6.mp4"
+  video_name: "video2.mp4"
   camera_names: [ "nothing", "iphone" ]
   paths:
     originals: "resources/videos/originals"
