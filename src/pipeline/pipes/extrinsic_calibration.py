@@ -174,6 +174,7 @@ class ExtrinsicCalibration(Pipe):
 
         # Build the 3D scene
         lane = go.Figure(
+
             data=[
                 go.Mesh3d(x=x, y=y, z=z, color="lightblue", opacity=0.8, name="Bowling Lane"),
                 go.Cone(x=pos1[0], y=pos1[1], z=pos1[2], u=[rot1[0]], v=[rot1[1]], w=[rot1[2]], sizemode="absolute",
@@ -183,7 +184,19 @@ class ExtrinsicCalibration(Pipe):
                         sizeref=1, showscale=False, name=views[1].camera.name, colorscale=[[0, "blue"], [1, "blue"]],
                         cmin=0, cmax=1),
                 go.Scatter3d(x=x[1:3], y=y[1:3], z=z[1:3], mode="lines", name="Pit", line=dict(width=5, color="red"))
-            ]
+            ],
+            layout = go.Layout(
+                scene=dict(
+                    xaxis=dict(title="X"),
+                    yaxis=dict(title="Y"),
+                    zaxis=dict(title="Z"),
+                    aspectmode="data",
+                    camera=dict(
+                        eye=dict(x=-4.45, y=-1.07/2, z=1.5),
+                        center=dict(x=20, y=-1.07/2, z=-10),
+                    )
+                ),
+            )
         )
 
         # Make axes proportional

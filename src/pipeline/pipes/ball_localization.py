@@ -189,6 +189,16 @@ class LocalizeBall(Pipe):
                 go.Scatter3d(x=xt, y=yt, z=zt, mode="lines", name="Trajectory", line=dict(width=5, color="green")),
             ],
             layout=go.Layout(
+                scene=dict(
+                    xaxis=dict(title="X"),
+                    yaxis=dict(title="Y"),
+                    zaxis=dict(title="Z"),
+                    aspectmode="data",
+                    camera=dict(
+                        eye=dict(x=-10, y=-1.07 / 2, z=1.5),
+                        center=dict(x=20, y=-1.07 / 2, z=-10),
+                    )
+                ),
                 updatemenus=[
                     {
                         "type": "buttons",

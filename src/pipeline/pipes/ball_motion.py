@@ -317,6 +317,10 @@ class SpinBall(Pipe):
                     yaxis=dict(title="Y"),
                     zaxis=dict(title="Z"),
                     aspectmode="data",
+                    camera=dict(
+                        eye=dict(x=-7.5, y=-1.07/2, z=1.5),
+                        center=dict(x=20, y=-1.07/2, z=-10),
+                    )
                 ),
                 updatemenus=[
                     {
@@ -340,6 +344,7 @@ class SpinBall(Pipe):
                             {
                                 "label": "Pause",
                                 "method": "animate",
+
                                 "args": [
                                     None,
                                     {
