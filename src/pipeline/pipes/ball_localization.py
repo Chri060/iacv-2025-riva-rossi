@@ -33,6 +33,7 @@ class LocalizeBall(Pipe):
         # Load the parameters
         save_path = params["save_path"]
         visualization = params.get("visualization", Environment.visualization)
+        ball_radius = params.get("ball_radius", Environment.visualization)
         views = Environment.get_views()
 
         # Compute the projection matrices for both cameras
@@ -83,7 +84,7 @@ class LocalizeBall(Pipe):
         points_3d = points_3d[start_over:end_over]
 
         # Set Z to constant ball radius
-        z = np.full(points_3d.shape[0], params.get("ball_radius", 0.1091))
+        z = np.full(points_3d.shape[0], ball_radius)
 
         # Update points_3d with constant Z
         points_3d = np.column_stack((points_3d[:, 0], points_3d[:, 1], z))
@@ -157,6 +158,7 @@ class LocalizeBall(Pipe):
 
         # Load the previously saved 3D trajectory
         trajectory_3d = cast(BallTrajectory3d, DataManager.load(self.save_name))
+        radius = params.get("ball_radius", Environment.visualization)
         Environment.set("3D_trajectory", trajectory_3d)
 
         # Helper function to create a 3D sphere at a given center with a specified radius
@@ -177,9 +179,6 @@ class LocalizeBall(Pipe):
         x = lane_pos[:, 0]
         y = lane_pos[:, 1]
         z = lane_pos[:, 2]
-
-        # Radius of the bowling ball (in meters)
-        radius = params.get("radius", 0.1091)
 
         # Construct the figure
         lane = go.Figure(

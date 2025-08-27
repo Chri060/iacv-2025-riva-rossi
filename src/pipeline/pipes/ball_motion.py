@@ -419,7 +419,7 @@ class SpinBall(Pipe):
         plot_utils.bowling_lane(ax, np.array(Environment.coords["world_lane"]))
         plot_utils.trajectory(ax, cast(BallTrajectory3d, Environment.get("3D_trajectory")))
 
-        ball_diameter = params.get("ball_radius", 0.1091) * 2
+        ball_diameter = params.get("ball_radius", Environment.visualization) * 2
         trajectory_3d = Environment.get("3D_trajectory")
 
         cam_names = list(axis_points.keys())
