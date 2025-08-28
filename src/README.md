@@ -37,7 +37,8 @@ sudo cp libopenh264-2.3.1-linux64/libopenh264.so.2 /usr/lib/
 # MacOS
 brew install openh264
 
-# Windows: download from the website
+# Windows
+# Download from https://github.com/cisco/openh264/releases/tag/v2.6.0
 ```
 
 ### Run the program
