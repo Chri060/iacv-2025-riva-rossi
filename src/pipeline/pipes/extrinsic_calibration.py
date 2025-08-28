@@ -56,7 +56,7 @@ class ExtrinsicCalibration(Pipe):
 
             # Estimate rotation and translation using PnP
             _, rotation_vector, translation_vector = cv.solvePnP(world_points, image_points, intrinsic, None,
-                                                                 flags=cv.SOLVEPNP_ITERATIVE)
+                                                                 flags=cv.SOLVEPNP_IPPE)
 
             # Convert rotation vector to rotation matrix
             rotation_matrix, _ = cv.Rodrigues(rotation_vector)
