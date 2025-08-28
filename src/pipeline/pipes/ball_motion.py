@@ -145,6 +145,9 @@ class SpinBall(Pipe):
                             else:
                                 avg_axis = np.array([0, 0, 1])
 
+                            avg_axis = view.camera.rotation.T @ avg_axis
+                            avg_axis /= np.linalg.norm(avg_axis)
+
                             axis_points[view.camera.name].append(avg_axis)
 
                             # Compute weighted average spin rate

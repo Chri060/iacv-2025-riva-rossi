@@ -1,7 +1,7 @@
 # To be used during development
 save_name: dev
 global:
-  video_name: "video2.mp4"
+  video_name: "video1.mp4"
   camera_names: [ "nothing", "iphone" ]
   paths:
     originals: "resources/videos/originals"
@@ -16,12 +16,12 @@ pipeline:
       images_path: "resources/calibration"
     }
   - name: video_synchronization
-    type: execute
+    type: load
     params: {
       save_path: "resources/videos/sync"
     }
   - name: video_undistortion
-    type: execute
+    type: load
     params: {
       save_path: "resources/videos/undistorted"
     }
@@ -31,17 +31,17 @@ pipeline:
       save_path: "resources/images/lane_detection"
     }
   - name: extrinsic
-    type: execute
+    type: load
     params: {
       save_path: "resources/graphs/extrinsic"
     }
   - name: ball_tracker
-    type: execute
+    type: load
     params: {
       save_path: "resources/images/tracking"
     }
   - name: ball_localization
-    type: execute
+    type: load
     params: {
       save_path: "resources/graphs/trajectory"
     }
