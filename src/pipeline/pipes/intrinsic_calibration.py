@@ -124,10 +124,11 @@ class IntrinsicCalibration(Pipe):
             else:
                 raise Exception("No valid checkerboard detections. Calibration failed.")
 
-        self.show_results(cast(Iterable, DataManager.load(self.save_name, intrinsic=True)))
-
         # Save results
         DataManager.save(calibration_results, self.save_name, intrinsic=True)
+
+        # Show results
+        self.show_results(calibration_results)
 
         input("\033[92mPress Enter to continue...\033[0m")
 
