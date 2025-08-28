@@ -549,6 +549,7 @@ class Environment:
         Environment.env_vars = {}
         Environment.coords = global_parameters.get("coords", {})
         Environment.visualization = global_parameters.get("visualization", False)
+        Environment.ball_radius = global_parameters.get("ball_radius", 0.1091)
         print("Default visualization : ", Environment.visualization)
         Environment.__initialized = True
 

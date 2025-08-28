@@ -114,7 +114,7 @@ class IntrinsicCalibration(Pipe):
 
                 view = Environment.get(camera_name)
 
-                ret, mtx, dist, _, _ = cv.calibrateCamera(object_points, image_points, img_shape)
+                ret, mtx, dist, _, _ = cv.calibrateCamera(object_points, image_points, img_shape, cameraMatrix=None, distCoeffs=None)
 
                 # Save results in Environment for later use
                 view = Environment.get(camera_name)

@@ -275,7 +275,7 @@ class SpinBall(Pipe):
         z = lane_pos[:, 2]
 
         # Radius of the bowling ball (in meters)
-        radius = params.get("radius", 0.1091)
+        radius = params.get("ball_radius", Environment.ball_radius)
 
         # Add spin axes
         spin_axis_traces = []

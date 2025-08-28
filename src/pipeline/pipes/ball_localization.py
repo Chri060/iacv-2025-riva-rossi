@@ -33,7 +33,7 @@ class LocalizeBall(Pipe):
         # Load the parameters
         save_path = params["save_path"]
         visualization = params.get("visualization", Environment.visualization)
-        ball_radius = params.get("ball_radius", Environment.visualization)
+        ball_radius = params.get("ball_radius", Environment.ball_radius)
         views = Environment.get_views()
 
         # Compute the projection matrices for both cameras
@@ -158,7 +158,7 @@ class LocalizeBall(Pipe):
 
         # Load the previously saved 3D trajectory
         trajectory_3d = cast(BallTrajectory3d, DataManager.load(self.save_name))
-        radius = params.get("ball_radius", Environment.visualization)
+        radius = params.get("ball_radius", Environment.ball_radius)
         Environment.set("3D_trajectory", trajectory_3d)
 
         # Helper function to create a 3D sphere at a given center with a specified radius
