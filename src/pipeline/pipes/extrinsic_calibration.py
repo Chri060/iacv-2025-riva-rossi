@@ -22,7 +22,9 @@ class ExtrinsicCalibration(Pipe):
         4. Updates each camera's extrinsic matrix, position, and orientation in the Environment.
         5. Optionally visualizes the calibration with Matplotlib 3D plots.
         6. Saves the calibration results via DataManager.
-        7. Provides a Plotly Dash page for interactive 3D visualization of cameras and the bowling lane.
+    
+    It provides also a Plotly Dash page for interactive 3D visualization of pre-computed cameras 
+    position over the bowling lane.
     """
 
     def execute(self, params: dict):

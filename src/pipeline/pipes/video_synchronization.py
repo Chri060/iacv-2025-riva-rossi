@@ -19,7 +19,8 @@ class SynchronizeVideo(Pipe):
         2. Applies the calculated shift to produce synchronized video streams.
         3. Updates the Environment with the synchronized Video objects.
         4. Optionally visualizes synchronization side by side in OpenCV.
-        5. Supports side-by-side Dash video visualization for web display.
+    
+    Supports side-by-side Dash video visualization for web display.
     """
 
     def execute(self, params: dict):

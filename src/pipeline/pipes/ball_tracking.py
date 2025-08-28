@@ -18,7 +18,8 @@ class TrackBall(Pipe):
         1. Tracks the ball in each camera view.
         2. Saves the 2D trajectories for later pipeline stages.
         3. Optionally visualizes the tracking in real time.
-        4. Supports side-by-side video visualization in Dash.
+        
+    Supports side-by-side video visualization in Dash.
     """
 
     def execute(self, params: dict):

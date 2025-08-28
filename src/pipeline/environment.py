@@ -268,7 +268,7 @@ class BallTrajectory2d:
 
     def interpolate_centers(self):
         """
-        Interpolates missing 2D points (x, y) using cubic spline interpolation.
+        Interpolates missing 2D points (x, y) using linear interpolation.
 
         Keeps initial None points untouched and converts interpolated points to int.
         """

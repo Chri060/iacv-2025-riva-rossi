@@ -16,7 +16,7 @@ class LocalizeBall(Pipe):
     This pipeline step:
         1. Triangulates the 3D ball position from 2D trajectories in two camera views.
         2. Filters points to keep only those over the bowling lane.
-        4. Saves the 3D trajectory and optionally visualizes it using matplotlib and Plotly.
+        3. Saves the 3D trajectory and optionally visualizes it using matplotlib and Plotly.
     """
 
     def execute(self, params: dict):

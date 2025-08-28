@@ -20,7 +20,8 @@ class UndistortVideo(Pipe):
         3. Saves the undistorted videos to the specified path.
         4. Updates the Environment with the new undistorted Video objects.
         5. Optionally visualizes undistorted frames in real-time via OpenCV.
-        6. Supports side-by-side Dash video visualization for web display.
+    
+    Supports side-by-side Dash video visualization for web display.
     """
 
     def execute(self, params: dict):
