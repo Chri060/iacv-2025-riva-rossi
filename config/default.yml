@@ -11,7 +11,7 @@ global:
   visualization: True
 pipeline:
   - name: intrinsic
-    type: load
+    type: execute
     params: {
       images_path: "resources/calibration"
     }
@@ -26,27 +26,27 @@ pipeline:
       save_path: "resources/videos/undistorted"
     }
   - name: lane_detection
-    type: load
+    type: execute
     params: {
       save_path: "resources/images/lane_detection"
     }
   - name: extrinsic
-    type: load
+    type: execute
     params: {
       save_path: "resources/graphs/extrinsic"
     }
   - name: ball_tracker
-    type: load
+    type: execute
     params: {
       save_path: "resources/images/tracking"
     }
   - name: ball_localization
-    type: load
+    type: execute
     params: {
       save_path: "resources/graphs/trajectory"
     }
   - name: ball_rotation
-    type: load
+    type: execute
     params: {
       graph_save_path: "resources/graphs/"
     }
