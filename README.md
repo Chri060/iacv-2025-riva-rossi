@@ -1,7 +1,6 @@
 # Ball Trajectory And Motion Analysis  
 
 <div align="center">
-    <img src="https://img.shields.io/badge/Version-1.0-4CAF50?style=for-the-badge" alt="Project version">
     <img src="https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white&style=for-the-badge" alt="Python"> 
     <img src="https://img.shields.io/badge/OpenCV-5C3EE8?logo=opencv&logoColor=white&style=for-the-badge" alt="OpenCV">
     <img src="https://img.shields.io/badge/Ultralytics-FF6F00?logo=ultralytics&logoColor=white&style=for-the-badge" alt="Ultralytics">
